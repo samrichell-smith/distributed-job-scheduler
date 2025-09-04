@@ -11,6 +11,14 @@ const (
 	Failed    Status = "Failed"
 )
 
+type JobType string
+
+const (
+	AddNumbersJob    JobType = "AddNumbers"
+	ReverseStringJob JobType = "ReverseString"
+	ResizeImageJob   JobType = "ResizeImage"
+)
+
 type Job struct {
 	ID          string
 	Name        string
