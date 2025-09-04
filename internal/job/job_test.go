@@ -15,7 +15,7 @@ func generateLargeArray(size int) []int {
 }
 
 func TestLargeArraySumJobPerformanceComparison(t *testing.T) {
-	size := 10_000_000 // 10 million for faster test runs
+	size := 100_000_000 // 10 million for faster test runs
 	array := generateLargeArray(size)
 	expected := size * (size + 1) / 2
 
@@ -55,9 +55,11 @@ func TestLargeArraySumJobPerformanceComparison(t *testing.T) {
 	}
 
 	// Print timing comparison
+	t.Logf("Array size: %d", size)
 	t.Logf("Single-threaded took: %s", durationSingle)
 	t.Logf("Multi-threaded with %d threads took: %s", numThreads, durationMulti)
 	t.Logf("Speedup: %.2fx", float64(durationSingle)/float64(durationMulti))
+
 }
 
 func TestAddNumbersJob(t *testing.T) {
