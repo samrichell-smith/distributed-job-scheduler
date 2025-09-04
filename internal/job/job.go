@@ -51,11 +51,18 @@ func (j *Job) Execute() {
 	case AddNumbersJob:
 		payload := j.Payload.(AddNumbersPayload)
 		j.Result = AddNumbersResult{Sum: payload.X + payload.Y}
+
 	case ReverseStringJob:
 		payload := j.Payload.(ReverseStringPayload)
 		j.Result = ReverseStringResult{Reversed: reverse(payload.Text)}
+
+	case ResizeImageJob:
+		payload := j.Payload.(ResizeImagePayload)
+		resized := ResizeImage(payload.URL, payload.Width, payload.Height) // call helper
+		j.Result = ResizeImageResult{ResizedURL: resized}
+
 	case LargeArraySumJob:
-		//fallback if called single threaded
+		// fallback if called single threaded
 		payload := j.Payload.(LargeArraySumPayload)
 		sum := 0
 		for _, v := range payload.Array {

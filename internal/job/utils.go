@@ -1,6 +1,10 @@
 package job
 
-import "sync"
+import (
+	"fmt"
+	"sync"
+	"time"
+)
 
 func reverse(s string) string {
 	runes := []rune(s)
@@ -22,4 +26,10 @@ func (j *Job) addPartialSum(partial int) {
 	}
 	res.Sum += partial
 	j.Result = res
+}
+
+func ResizeImage(url string, width, height int) string {
+	// Simulate processing time
+	time.Sleep(100 * time.Millisecond)
+	return fmt.Sprintf("%s_resized_%dx%d", url, width, height)
 }

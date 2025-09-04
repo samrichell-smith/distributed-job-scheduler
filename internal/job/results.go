@@ -9,8 +9,7 @@ type ReverseStringResult struct {
 }
 
 type ResizeImageResult struct {
-	Status string
-	Size   int
+	ResizedURL string
 }
 
 type LargeArraySumResult struct {
