@@ -72,5 +72,23 @@ func (j *Job) Execute() {
 }
 
 func (j *Job) ExecuteChunk(threadID, totalThreads int) {
-	// Default: do nothing
+	if j.Type != LargeArraySumJob {
+		return // other jobs do nothing
+	}
+
+	payload := j.Payload.(LargeArraySumPayload)
+	n := len(payload.Array)
+	chunkSize := n / totalThreads
+	start := threadID * chunkSize
+	end := start + chunkSize
+	if threadID == totalThreads-1 {
+		end = n // last thread handles remainder
+	}
+
+	localSum := 0
+	for _, v := range payload.Array[start:end] {
+		localSum += v
+	}
+
+	j.addPartialSum(localSum)
 }
