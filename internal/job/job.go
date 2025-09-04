@@ -42,3 +42,20 @@ func NewJob(id, name string, jobType JobType, priority int, payload interface{})
 		CreatedAt: time.Now(),
 	}
 }
+
+func (j *Job) Execute() {
+	j.Status = Pending
+	switch j.Type {
+	case AddNumbersJob:
+		payload := j.Payload.(AddNumbersPayload)
+		j.Result = AddNumbersResult{Sum: payload.X + payload.Y}
+	case ReverseStringJob:
+		payload := j.Payload.(ReverseStringPayload)
+		j.Result = ReverseStringResult{Reversed: reverse(payload.Text)}
+	default:
+		j.Status = Failed
+		return
+	}
+	j.Status = Completed
+	j.CompletedAt = time.Now()
+}
