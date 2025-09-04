@@ -14,3 +14,7 @@ type ResizeImagePayload struct {
 	Width  int
 	Height int
 }
+
+type LargeArraySumPayload struct {
+	Array []int
+}

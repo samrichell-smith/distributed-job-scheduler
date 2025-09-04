@@ -17,18 +17,20 @@ const (
 	AddNumbersJob    JobType = "AddNumbers"
 	ReverseStringJob JobType = "ReverseString"
 	ResizeImageJob   JobType = "ResizeImage"
+	LargeArraySumJob JobType = "LargeArraySum"
 )
 
 type Job struct {
-	ID          string
-	Name        string
-	Type        JobType
-	Status      Status
-	Priority    int
-	Payload     interface{}
-	Result      interface{}
-	CreatedAt   time.Time
-	CompletedAt time.Time
+	ID           string
+	Name         string
+	Type         JobType
+	Status       Status
+	Priority     int
+	Payload      interface{}
+	Result       interface{}
+	CreatedAt    time.Time
+	CompletedAt  time.Time
+	ThreadDemand int
 }
 
 func NewJob(id, name string, jobType JobType, priority int, payload interface{}) *Job {
@@ -52,10 +54,23 @@ func (j *Job) Execute() {
 	case ReverseStringJob:
 		payload := j.Payload.(ReverseStringPayload)
 		j.Result = ReverseStringResult{Reversed: reverse(payload.Text)}
+	case LargeArraySumJob:
+		//fallback if called single threaded
+		payload := j.Payload.(LargeArraySumPayload)
+		sum := 0
+		for _, v := range payload.Array {
+			sum += v
+		}
+		j.Result = LargeArraySumResult{Sum: sum}
+
 	default:
 		j.Status = Failed
 		return
 	}
 	j.Status = Completed
 	j.CompletedAt = time.Now()
+}
+
+func (j *Job) ExecuteChunk(threadID, totalThreads int) {
+	// Default: do nothing
 }

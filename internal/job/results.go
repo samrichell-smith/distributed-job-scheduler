@@ -12,3 +12,7 @@ type ResizeImageResult struct {
 	Status string
 	Size   int
 }
+
+type LargeArraySumResult struct {
+	Sum int
+}
