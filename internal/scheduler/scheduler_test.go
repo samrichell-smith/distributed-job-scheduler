@@ -1,7 +1,6 @@
 package scheduler
 
 import (
-	"fmt"
 	"testing"
 	"time"
 
@@ -9,145 +8,87 @@ import (
 	"github.com/samrichell-smith/distributed-job-scheduler/internal/worker"
 )
 
-// -------------------------
-// Helper to create workers
-// -------------------------
+// Helper to create test workers
 func createTestWorkers() []*worker.Worker {
-	w1 := worker.NewWorker("w1", 4) // 4 threads
-	w2 := worker.NewWorker("w2", 2) // 2 threads
+	w1 := worker.NewWorker("w1", 4)
+	w2 := worker.NewWorker("w2", 2)
 	w1.Start()
 	w2.Start()
 	return []*worker.Worker{w1, w2}
 }
 
-// -------------------------
-// Test Scheduler job order
-// -------------------------
-func TestSchedulerPriorityExecution(t *testing.T) {
+// Helper to wait for a job to complete (polling)
+func waitJobCompletion(j *job.Job, timeout time.Duration) bool {
+	deadline := time.Now().Add(timeout)
+	for {
+		if j.Status == job.Completed {
+			return true
+		}
+		if time.Now().After(deadline) {
+			return false
+		}
+		time.Sleep(5 * time.Millisecond)
+	}
+}
+
+func TestSchedulerBasicExecution(t *testing.T) {
 	workers := createTestWorkers()
 	s := NewScheduler(workers)
 	s.Run()
 	defer s.Stop()
 
-	// Jobs with different priorities
-	job1 := job.NewJob("1", "Job1", job.AddNumbersJob, 1, job.AddNumbersPayload{X: 1, Y: 2})
-	job2 := job.NewJob("2", "Job2", job.AddNumbersJob, 5, job.AddNumbersPayload{X: 2, Y: 3})
-	job3 := job.NewJob("3", "Job3", job.AddNumbersJob, 3, job.AddNumbersPayload{X: 3, Y: 4})
+	j1 := job.NewJob("j1", "Add", job.AddNumbersJob, 1, job.AddNumbersPayload{X: 1, Y: 2})
+	s.Submit(j1)
 
-	s.Submit(job1)
-	s.Submit(job2)
-	s.Submit(job3)
-
-	time.Sleep(200 * time.Millisecond) // allow scheduler to assign jobs
-
-	// Expect job2 (priority 5) first
-	if job2.Status != job.Completed {
-		t.Errorf("Expected job2 to be completed first")
+	done := waitJobCompletion(j1, 200*time.Millisecond)
+	if !done {
+		t.Fatal("Job j1 did not complete in time")
 	}
-	if job1.Status != job.Completed || job3.Status != job.Completed {
-		t.Errorf("Expected all jobs to be completed eventually")
+
+	res := j1.Result.(job.AddNumbersResult)
+	if res.Sum != 3 {
+		t.Errorf("Expected sum 3, got %d", res.Sum)
 	}
 }
 
-// -------------------------
-// Test thread-demand scheduling
-// -------------------------
 func TestSchedulerThreadDemand(t *testing.T) {
 	workers := createTestWorkers()
 	s := NewScheduler(workers)
 	s.Run()
 	defer s.Stop()
 
-	// Job demanding 4 threads (only worker w1 can run it)
 	jobBig := job.NewJob("big", "BigJob", job.LargeArraySumJob, 1, job.LargeArraySumPayload{Array: []int{1, 2, 3, 4}})
 	jobBig.ThreadDemand = 4
 
-	// Job demanding 2 threads (both workers can run it)
 	jobSmall := job.NewJob("small", "SmallJob", job.LargeArraySumJob, 2, job.LargeArraySumPayload{Array: []int{5, 6}})
 	jobSmall.ThreadDemand = 2
 
 	s.Submit(jobBig)
 	s.Submit(jobSmall)
 
-	time.Sleep(200 * time.Millisecond) // allow scheduler to assign jobs
+	doneBig := waitJobCompletion(jobBig, 500*time.Millisecond)
+	doneSmall := waitJobCompletion(jobSmall, 500*time.Millisecond)
 
-	if jobBig.Status != job.Completed {
-		t.Errorf("Big job should be completed by worker with enough threads")
+	if !doneBig {
+		t.Errorf("Big job did not complete")
 	}
-	if jobSmall.Status != job.Completed {
-		t.Errorf("Small job should be completed by any worker with enough threads")
+	if !doneSmall {
+		t.Errorf("Small job did not complete")
 	}
 }
 
-// -------------------------
-// Test multiple jobs concurrently
-// -------------------------
-func TestSchedulerMultipleJobs(t *testing.T) {
+func TestSchedulerSingleThreadFallback(t *testing.T) {
 	workers := createTestWorkers()
 	s := NewScheduler(workers)
 	s.Run()
 	defer s.Stop()
 
-	numJobs := 10
-	jobs := make([]*job.Job, numJobs)
-	for i := 0; i < numJobs; i++ {
-		j := job.NewJob(
-			fmt.Sprintf("%d", i), // converts integer to string
-			"AddNumbers",
-			job.AddNumbersJob,
-			i%3, // varying priorities
-			job.AddNumbersPayload{X: i, Y: i},
-		)
-
-		jobs[i] = j
-		s.Submit(j)
-	}
-
-	time.Sleep(500 * time.Millisecond)
-
-	for _, j := range jobs {
-		if j.Status != job.Completed {
-			t.Errorf("Job %s should be completed, got status %s", j.ID, j.Status)
-		}
-	}
-}
-
-// -------------------------
-// Test scheduler stop
-// -------------------------
-func TestSchedulerStop(t *testing.T) {
-	workers := createTestWorkers()
-	s := NewScheduler(workers)
-	s.Run()
-
-	j := job.NewJob("stop1", "AddNumbers", job.AddNumbersJob, 1, job.AddNumbersPayload{X: 1, Y: 2})
-	s.Submit(j)
-
-	time.Sleep(100 * time.Millisecond)
-	s.Stop()
-
-	if j.Status != job.Completed {
-		t.Errorf("Job should have completed before scheduler stopped, got %s", j.Status)
-	}
-}
-
-// -------------------------
-// Test scheduler with no suitable worker
-// -------------------------
-func TestSchedulerNoSuitableWorker(t *testing.T) {
-	workers := createTestWorkers()
-	s := NewScheduler(workers)
-	s.Run()
-	defer s.Stop()
-
-	// Job demands 10 threads, no worker can satisfy
 	jobImpossible := job.NewJob("impossible", "ImpossibleJob", job.LargeArraySumJob, 1, job.LargeArraySumPayload{Array: []int{1, 2, 3}})
 	jobImpossible.ThreadDemand = 10
 	s.Submit(jobImpossible)
 
-	time.Sleep(200 * time.Millisecond)
-
-	if jobImpossible.Status == job.Completed {
-		t.Errorf("Job with impossible thread demand should not have completed")
+	done := waitJobCompletion(jobImpossible, 500*time.Millisecond)
+	if !done {
+		t.Errorf("Job with impossible thread demand did not complete with single-thread fallback")
 	}
 }

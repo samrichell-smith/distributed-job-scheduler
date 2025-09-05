@@ -3,6 +3,7 @@ package scheduler
 import (
 	"container/heap"
 	"sync"
+	"time"
 
 	"github.com/samrichell-smith/distributed-job-scheduler/internal/job"
 	"github.com/samrichell-smith/distributed-job-scheduler/internal/worker"
@@ -53,7 +54,7 @@ type Scheduler struct {
 	stopCh  chan struct{}
 }
 
-// NewScheduler takes a list of worker pointers (manual setup for now)
+// NewScheduler takes a list of worker pointers
 func NewScheduler(workers []*worker.Worker) *Scheduler {
 	s := &Scheduler{
 		jobQ:    make(JobQueue, 0),
@@ -68,7 +69,7 @@ func NewScheduler(workers []*worker.Worker) *Scheduler {
 func (s *Scheduler) Submit(j *job.Job) {
 	s.mu.Lock()
 	heap.Push(&s.jobQ, j)
-	s.cond.Signal() // wake up a worker loop
+	s.cond.Broadcast() // wake up all waiting worker loops
 	s.mu.Unlock()
 }
 
@@ -85,7 +86,8 @@ func (s *Scheduler) workerLoop(w *worker.Worker) {
 	defer s.wg.Done()
 	for {
 		s.mu.Lock()
-		// wait while no jobs available
+
+		// Wait while no jobs available
 		for len(s.jobQ) == 0 {
 			s.cond.Wait()
 			select {
@@ -96,38 +98,83 @@ func (s *Scheduler) workerLoop(w *worker.Worker) {
 			}
 		}
 
-		// Find a job that this worker has enough threads for
-		var j *job.Job
-		for i, candidate := range s.jobQ {
-			if candidate.ThreadDemand <= w.NumThreads {
-				j = candidate
-				// Remove from queue
-				s.jobQ = append(s.jobQ[:i], s.jobQ[i+1:]...)
+		var selectedJob *job.Job
+		var index int
+		var fallbackSingleThread bool
+
+		// Iterate jobs by priority
+		for i, j := range s.jobQ {
+			// Check if worker can execute immediately
+			if j.ThreadDemand <= w.AvailableThreads() {
+				selectedJob = j
+				index = i
 				break
 			}
 		}
 
-		// If no suitable job, wait and retry
-		if j == nil {
-			s.cond.Wait()
-			s.mu.Unlock()
-			continue
+		if selectedJob == nil && len(s.jobQ) > 0 {
+			// No currently free worker can execute any job
+			maxThreads := 0
+			for _, other := range s.workers {
+				if other.NumThreads > maxThreads {
+					maxThreads = other.NumThreads
+				}
+			}
+
+			// Pick highest priority job anyway if no worker can satisfy it
+			if s.jobQ[0].ThreadDemand > maxThreads {
+				selectedJob = s.jobQ[0]
+				index = 0
+				fallbackSingleThread = true
+			} else {
+				// Wait until threads become free
+				s.cond.Wait()
+				s.mu.Unlock()
+				continue
+			}
 		}
+
+		// Remove job from queue
+		s.jobQ = append(s.jobQ[:index], s.jobQ[index+1:]...)
 		s.mu.Unlock()
 
-		// Push the job into the worker's queue
-		w.JobQueue <- j
+		if fallbackSingleThread {
+			// Run single-thread fallback
+			selectedJob.ThreadDemand = 1
+		}
+
+		select {
+		case w.JobQueue <- selectedJob:
+		case <-s.stopCh:
+			return
+		}
 	}
 }
 
-// Stop signals all worker loops to exit
+// Stop signals all worker loops to exit and stops workers
 func (s *Scheduler) Stop() {
 	close(s.stopCh)
 	s.cond.Broadcast() // wake up all waiting worker loops
 	s.wg.Wait()
 
-	// Also stop all workers
 	for _, w := range s.workers {
 		w.Stop()
+	}
+}
+
+// Optional: helper to wait for all jobs to complete (for testing)
+func (s *Scheduler) WaitAllJobsDone(timeout time.Duration) bool {
+	deadline := time.Now().Add(timeout)
+	for {
+		s.mu.Lock()
+		if len(s.jobQ) == 0 {
+			s.mu.Unlock()
+			return true
+		}
+		s.mu.Unlock()
+		if time.Now().After(deadline) {
+			return false
+		}
+		time.Sleep(5 * time.Millisecond)
 	}
 }

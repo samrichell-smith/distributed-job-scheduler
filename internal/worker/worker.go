@@ -78,7 +78,7 @@ func (w *Worker) processJob(j *job.Job) {
 }
 
 // Helper to see how many threads are currently free
-func (w *Worker) availableThreads() int {
+func (w *Worker) AvailableThreads() int {
 	return len(w.FreeThreads)
 }
 
