@@ -1,0 +1,49 @@
+# -----------------------
+# Go build / binaries
+# -----------------------
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+
+# Go coverage
+*.coverprofile
+
+# Dependency directories
+/vendor/
+
+# -----------------------
+# IDEs / editors
+# -----------------------
+.vscode/
+.idea/
+*.swp
+*.swo
+*.DS_Store
+
+# -----------------------
+# Logs / temp files
+# -----------------------
+*.log
+tmp/
+*.tmp
+
+# -----------------------
+# Docker
+# -----------------------
+# Ignore Docker image layers, containers, etc.
+docker-compose.override.yml
+*.env
+*.env.local
+*.env.*.local
+docker-compose.override.*.yml
+
+# -----------------------
+# Node / frontend (if you add any)
+# -----------------------
+node_modules/
+dist/
+build/
