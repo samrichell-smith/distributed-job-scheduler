@@ -29,6 +29,7 @@ type Job struct {
 	Payload      interface{}
 	Result       interface{}
 	CreatedAt    time.Time
+	StartedAt    time.Time
 	CompletedAt  time.Time
 	ThreadDemand int
 }

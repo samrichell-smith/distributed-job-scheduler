@@ -60,7 +60,12 @@ func jobToResponse(j *job.Job) JobResponse {
 		ThreadDemand: j.ThreadDemand,
 		Status:       string(j.Status),
 		CreatedAt:    j.CreatedAt,
-		StartedAt:    nil, // Replace with the correct field if available, e.g., j.StartTime
+		StartedAt: func() *time.Time {
+			if !j.StartedAt.IsZero() {
+				return &j.StartedAt
+			}
+			return nil
+		}(),
 		CompletedAt: func() *time.Time {
 			if !j.CompletedAt.IsZero() {
 				return &j.CompletedAt
@@ -101,7 +106,13 @@ func main() {
 		for rows.Next() {
 			var j JobResponse
 			var resultRaw []byte
-			err := rows.Scan(&j.ID, &j.Type, &j.Priority, &j.ThreadDemand, &j.Status, &j.CreatedAt, &j.CompletedAt, &resultRaw)
+			var startedAt time.Time
+			err := rows.Scan(&j.ID, &j.Type, &j.Priority, &j.ThreadDemand, &j.Status, &j.CreatedAt, &startedAt, &j.CompletedAt, &resultRaw)
+			if !startedAt.IsZero() {
+				j.StartedAt = &startedAt
+			} else {
+				j.StartedAt = nil
+			}
 			if err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 				return
@@ -119,8 +130,14 @@ func main() {
 		id := c.Param("id")
 		var j JobResponse
 		var resultRaw []byte
-		err := db.QueryRow(context.Background(), "SELECT id, type, priority, thread_demand, status, created_at, completed_at, result FROM jobs WHERE id=$1", id).Scan(
-			&j.ID, &j.Type, &j.Priority, &j.ThreadDemand, &j.Status, &j.CreatedAt, &j.CompletedAt, &resultRaw)
+		var startedAt time.Time
+		err := db.QueryRow(context.Background(), "SELECT id, type, priority, thread_demand, status, created_at, started_at, completed_at, result FROM jobs WHERE id=$1", id).Scan(
+			&j.ID, &j.Type, &j.Priority, &j.ThreadDemand, &j.Status, &j.CreatedAt, &startedAt, &j.CompletedAt, &resultRaw)
+		if !startedAt.IsZero() {
+			j.StartedAt = &startedAt
+		} else {
+			j.StartedAt = nil
+		}
 		if err != nil {
 			c.JSON(http.StatusNotFound, gin.H{"error": "job not found"})
 			return
@@ -281,25 +298,41 @@ func insertJobToDB(j *job.Job) error {
 		return err
 	}
 	_, err = db.Exec(context.Background(), `
-		INSERT INTO jobs (id, type, priority, thread_demand, status, created_at, started_at, completed_at, result, worker_id)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-		ON CONFLICT (id) DO UPDATE SET
-			status = EXCLUDED.status,
-			started_at = EXCLUDED.started_at,
-			completed_at = EXCLUDED.completed_at,
-			result = EXCLUDED.result,
-			worker_id = EXCLUDED.worker_id
-	`,
+	       INSERT INTO jobs (id, type, priority, thread_demand, status, created_at, started_at, completed_at, result, worker_id)
+	       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+	       ON CONFLICT (id) DO UPDATE SET
+		       status = EXCLUDED.status,
+		       started_at = EXCLUDED.started_at,
+		       completed_at = EXCLUDED.completed_at,
+		       result = EXCLUDED.result,
+		       worker_id = EXCLUDED.worker_id
+	       `,
 		j.ID,
 		j.Type,
 		j.Priority,
 		j.ThreadDemand,
 		j.Status,
 		j.CreatedAt,
-		nil, // started_at
+		j.StartedAt,
 		j.CompletedAt,
 		resultJSON,
 		nil, // worker_id
 	)
+
+	// Log performance metrics if job is completed
+	if !j.StartedAt.IsZero() && !j.CompletedAt.IsZero() {
+		queueTime := j.StartedAt.Sub(j.CreatedAt).Seconds()
+		execTime := j.CompletedAt.Sub(j.StartedAt).Seconds()
+		totalTime := j.CompletedAt.Sub(j.CreatedAt).Seconds()
+		_, _ = db.Exec(context.Background(), `
+		       INSERT INTO job_metrics (job_id, metric_name, metric_value)
+		       VALUES ($1, $2, $3), ($1, $4, $5), ($1, $6, $7), ($1, $8, $9)
+	       `,
+			j.ID, "queue_time", queueTime,
+			"execution_time", execTime,
+			"total_time", totalTime,
+			"worker_threads", float64(j.ThreadDemand),
+		)
+	}
 	return err
 }

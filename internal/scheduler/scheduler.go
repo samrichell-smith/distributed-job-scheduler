@@ -136,6 +136,10 @@ func (s *Scheduler) workerLoop(w *worker.Worker) {
 
 		// Remove job from queue
 		s.jobQ = append(s.jobQ[:index], s.jobQ[index+1:]...)
+		// Set started_at timestamp if not already set
+		if selectedJob.StartedAt.IsZero() {
+			selectedJob.StartedAt = time.Now()
+		}
 		s.mu.Unlock()
 
 		if fallbackSingleThread {
