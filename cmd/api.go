@@ -94,6 +94,22 @@ func main() {
 	// Create Gin router
 	r := gin.Default()
 
+	// Add CORS middleware
+	r.Use(func(c *gin.Context) {
+		c.Writer.Header().Set("Access-Control-Allow-Origin", "*")
+		c.Writer.Header().Set("Access-Control-Allow-Methods", "*")
+		c.Writer.Header().Set("Access-Control-Allow-Headers", "*")
+		c.Writer.Header().Set("Access-Control-Allow-Credentials", "true")
+		c.Writer.Header().Set("Access-Control-Expose-Headers", "*")
+
+		if c.Request.Method == "OPTIONS" {
+			c.AbortWithStatus(204)
+			return
+		}
+
+		c.Next()
+	})
+
 	// API endpoint: GET /db/jobs - fetch all jobs from PostgreSQL
 	r.GET("/db/jobs", func(c *gin.Context) {
 		rows, err := db.Query(context.Background(), "SELECT id, type, priority, thread_demand, status, created_at, completed_at, result FROM jobs ORDER BY created_at DESC")
