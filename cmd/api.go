@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"errors"
 	"log"
@@ -112,8 +113,9 @@ func main() {
 
 	// API endpoint: GET /db/jobs - fetch all jobs from PostgreSQL
 	r.GET("/db/jobs", func(c *gin.Context) {
-		rows, err := db.Query(context.Background(), "SELECT id, type, priority, thread_demand, status, created_at, completed_at, result FROM jobs ORDER BY created_at DESC")
+		rows, err := db.Query(context.Background(), "SELECT id, type, priority, thread_demand, status, created_at, started_at, completed_at, result FROM jobs ORDER BY created_at DESC")
 		if err != nil {
+			log.Printf("Error querying database: %v", err)
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
 		}
@@ -122,19 +124,30 @@ func main() {
 		for rows.Next() {
 			var j JobResponse
 			var resultRaw []byte
-			var startedAt time.Time
-			err := rows.Scan(&j.ID, &j.Type, &j.Priority, &j.ThreadDemand, &j.Status, &j.CreatedAt, &startedAt, &j.CompletedAt, &resultRaw)
-			if !startedAt.IsZero() {
-				j.StartedAt = &startedAt
-			} else {
-				j.StartedAt = nil
-			}
+			var startedAt sql.NullTime
+			var completedAt sql.NullTime
+			err := rows.Scan(&j.ID, &j.Type, &j.Priority, &j.ThreadDemand, &j.Status, &j.CreatedAt, &startedAt, &completedAt, &resultRaw)
 			if err != nil {
+				log.Printf("Error scanning row: %v", err)
 				c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 				return
 			}
+			if startedAt.Valid {
+				t := startedAt.Time
+				j.StartedAt = &t
+			} else {
+				j.StartedAt = nil
+			}
+			if completedAt.Valid {
+				t := completedAt.Time
+				j.CompletedAt = &t
+			} else {
+				j.CompletedAt = nil
+			}
 			if len(resultRaw) > 0 {
-				json.Unmarshal(resultRaw, &j.Result)
+				if err := json.Unmarshal(resultRaw, &j.Result); err != nil {
+					log.Printf("Error unmarshaling result: %v", err)
+				}
 			}
 			jobs = append(jobs, j)
 		}

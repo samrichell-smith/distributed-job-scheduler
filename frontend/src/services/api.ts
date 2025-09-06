@@ -23,29 +23,60 @@ interface JobStats {
 
 const API_URL = "http://localhost:8080";
 
+async function fetchCurrentJobs(): Promise<Job[]> {
+  const response = await fetch(`${API_URL}/jobs`, {
+    headers: {
+      'Accept': 'application/json',
+      'Content-Type': 'application/json'
+    },
+  });
+  if (!response.ok) {
+    throw new Error(`Failed to fetch current jobs: ${response.status} ${response.statusText}`);
+  }
+  return response.json();
+}
+
+async function fetchHistoricalJobs(): Promise<Job[]> {
+  const response = await fetch(`${API_URL}/db/jobs`, {
+    headers: {
+      'Accept': 'application/json',
+      'Content-Type': 'application/json'
+    },
+  });
+  if (!response.ok) {
+    throw new Error(`Failed to fetch historical jobs: ${response.status} ${response.statusText}`);
+  }
+  return response.json();
+}
+
 export async function fetchJobs(): Promise<Job[]> {
-  console.log('Fetching jobs from:', `${API_URL}/jobs`);
+  console.log('Fetching all jobs...');
   try {
-    const response = await fetch(`${API_URL}/jobs`, {
-      method: 'GET',
-      headers: {
-        'Accept': 'application/json',
-        'Content-Type': 'application/json'
-      },
-      mode: 'cors',
-      cache: 'no-cache',
-      credentials: 'same-origin'
+    // Fetch both current and historical jobs in parallel
+    const [currentJobs, historicalJobs] = await Promise.all([
+      fetchCurrentJobs(),
+      fetchHistoricalJobs()
+    ]);
+
+    console.log('Current jobs:', currentJobs);
+    console.log('Historical jobs:', historicalJobs);
+
+    // Combine and deduplicate jobs based on ID
+    const jobMap = new Map<string, Job>();
+    
+    // Current jobs take precedence
+    currentJobs.forEach(job => jobMap.set(job.id, job));
+    historicalJobs.forEach(job => {
+      if (!jobMap.has(job.id)) {
+        jobMap.set(job.id, job);
+      }
     });
-    console.log('Response status:', response.status);
-    console.log('Response headers:', Object.fromEntries(response.headers.entries()));
-    
-    if (!response.ok) {
-      throw new Error(`Failed to fetch jobs: ${response.status} ${response.statusText}`);
-    }
-    
-    const data = await response.json();
-    console.log('Fetched jobs:', data);
-    return data;
+
+    const allJobs = Array.from(jobMap.values());
+    // Sort by creation date, newest first
+    allJobs.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+
+    return allJobs;
   } catch (error) {
     console.error('Error fetching jobs:', error);
     throw error;
