@@ -4,12 +4,14 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"log"
 	"net/http"
 	"sync"
 	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/redis/go-redis/v9"
 	"github.com/samrichell-smith/distributed-job-scheduler/internal/job"
 	"github.com/samrichell-smith/distributed-job-scheduler/internal/scheduler"
@@ -25,6 +27,10 @@ var (
 	sched  *scheduler.Scheduler
 	jobsMu sync.RWMutex
 	jobs   = make(map[string]*job.Job)
+)
+
+var (
+	db *pgxpool.Pool
 )
 
 type SubmitJobRequest struct {
@@ -80,6 +86,17 @@ func mapToStruct(m map[string]interface{}, out interface{}) error {
 }
 
 func main() {
+	// Initialize PostgreSQL connection
+	dbURL := "postgres://postgres:postgres@localhost:5432/job_scheduler"
+	var err error
+	db, err = pgxpool.New(context.Background(), dbURL)
+	if err != nil {
+		log.Fatalf("Unable to connect to PostgreSQL: %v", err)
+	}
+	if err := db.Ping(context.Background()); err != nil {
+		log.Fatalf("Unable to ping PostgreSQL: %v", err)
+	}
+
 	// Initialize Redis client
 	redisClient = redis.NewClient(&redis.Options{
 		Addr:     "localhost:6379",
@@ -101,6 +118,7 @@ func main() {
 		}
 		return job.NewJob(id, "add_numbers", job.AddNumbersJob, req.Priority, payload), nil
 	}
+
 	jobRegistry["large_array_sum"] = func(id string, req SubmitJobRequest) (*job.Job, error) {
 		var payload job.LargeArraySumPayload
 		m, ok := req.Payload.(map[string]interface{})
@@ -162,6 +180,20 @@ func main() {
 		redisClient.Set(redisCtx, "job:"+j.ID, jobJSON, 0)
 
 		sched.Submit(j)
+
+		// Wait for job completion and insert into DB
+		go func(jobPtr *job.Job) {
+			for {
+				time.Sleep(50 * time.Millisecond)
+				if jobPtr.Status == "Completed" {
+					if err := insertJobToDB(jobPtr); err != nil {
+						log.Printf("Failed to insert job %s to DB: %v", jobPtr.ID, err)
+					}
+					break
+				}
+			}
+		}(j)
+
 		c.JSON(http.StatusAccepted, jobToResponse(j))
 	})
 
@@ -198,4 +230,34 @@ func main() {
 	})
 
 	r.Run(":8080")
+}
+
+// insertJobToDB inserts a completed job into the jobs table
+func insertJobToDB(j *job.Job) error {
+	resultJSON, err := json.Marshal(j.Result)
+	if err != nil {
+		return err
+	}
+	_, err = db.Exec(context.Background(), `
+		INSERT INTO jobs (id, type, priority, thread_demand, status, created_at, started_at, completed_at, result, worker_id)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+		ON CONFLICT (id) DO UPDATE SET
+			status = EXCLUDED.status,
+			started_at = EXCLUDED.started_at,
+			completed_at = EXCLUDED.completed_at,
+			result = EXCLUDED.result,
+			worker_id = EXCLUDED.worker_id
+	`,
+		j.ID,
+		j.Type,
+		j.Priority,
+		j.ThreadDemand,
+		j.Status,
+		j.CreatedAt,
+		nil, // started_at
+		j.CompletedAt,
+		resultJSON,
+		nil, // worker_id
+	)
+	return err
 }
