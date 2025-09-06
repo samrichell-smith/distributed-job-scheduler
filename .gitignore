@@ -47,9 +47,3 @@ docker-compose.override.*.yml
 node_modules/
 dist/
 build/
-
-# -----------------------
-# Redis
-# -----------------------
-# Ignore Redis database file
-dump.rdb
