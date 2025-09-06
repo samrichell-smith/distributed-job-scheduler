@@ -148,6 +148,51 @@ func main() {
 		c.JSON(http.StatusOK, j)
 	})
 
+	// API endpoint: GET /db/jobs/:id/metrics - fetch all metrics for a job
+	r.GET("/db/jobs/:id/metrics", func(c *gin.Context) {
+		id := c.Param("id")
+		rows, err := db.Query(context.Background(), "SELECT metric_name, metric_value, timestamp FROM job_metrics WHERE job_id=$1 ORDER BY timestamp", id)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+		defer rows.Close()
+		var metrics []gin.H
+		for rows.Next() {
+			var name string
+			var value float64
+			var ts time.Time
+			if err := rows.Scan(&name, &value, &ts); err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+				return
+			}
+			metrics = append(metrics, gin.H{"name": name, "value": value, "timestamp": ts})
+		}
+		c.JSON(http.StatusOK, metrics)
+	})
+
+	// API endpoint: GET /db/jobs/:id/logs - fetch all logs for a job
+	r.GET("/db/jobs/:id/logs", func(c *gin.Context) {
+		id := c.Param("id")
+		rows, err := db.Query(context.Background(), "SELECT timestamp, message, level FROM job_logs WHERE job_id=$1 ORDER BY timestamp", id)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+		defer rows.Close()
+		var logs []gin.H
+		for rows.Next() {
+			var ts time.Time
+			var msg, level string
+			if err := rows.Scan(&ts, &msg, &level); err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+				return
+			}
+			logs = append(logs, gin.H{"timestamp": ts, "message": msg, "level": level})
+		}
+		c.JSON(http.StatusOK, logs)
+	})
+
 	// Initialize PostgreSQL connection
 	dbURL := "postgres://postgres:postgres@localhost:5432/job_scheduler"
 	var err error
