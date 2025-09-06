@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -9,9 +10,15 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"github.com/redis/go-redis/v9"
 	"github.com/samrichell-smith/distributed-job-scheduler/internal/job"
 	"github.com/samrichell-smith/distributed-job-scheduler/internal/scheduler"
 	"github.com/samrichell-smith/distributed-job-scheduler/internal/worker"
+)
+
+var (
+	redisClient *redis.Client
+	redisCtx    = context.Background()
 )
 
 var (
@@ -73,6 +80,15 @@ func mapToStruct(m map[string]interface{}, out interface{}) error {
 }
 
 func main() {
+	// Initialize Redis client
+	redisClient = redis.NewClient(&redis.Options{
+		Addr:     "localhost:6379",
+		Password: "",
+		DB:       0,
+	})
+	if err := redisClient.Ping(redisCtx).Err(); err != nil {
+		panic("Could not connect to Redis: " + err.Error())
+	}
 	// Register job types
 	jobRegistry["add_numbers"] = func(id string, req SubmitJobRequest) (*job.Job, error) {
 		var payload job.AddNumbersPayload
@@ -141,6 +157,10 @@ func main() {
 		jobs[j.ID] = j
 		jobsMu.Unlock()
 
+		// Write job state to Redis
+		jobJSON, _ := json.Marshal(j)
+		redisClient.Set(redisCtx, "job:"+j.ID, jobJSON, 0)
+
 		sched.Submit(j)
 		c.JSON(http.StatusAccepted, jobToResponse(j))
 	})
@@ -157,6 +177,16 @@ func main() {
 
 	r.GET("/jobs/:id", func(c *gin.Context) {
 		id := c.Param("id")
+		// Try Redis first
+		val, err := redisClient.Get(redisCtx, "job:"+id).Result()
+		if err == nil {
+			var jobObj job.Job
+			if err := json.Unmarshal([]byte(val), &jobObj); err == nil {
+				c.JSON(http.StatusOK, jobToResponse(&jobObj))
+				return
+			}
+		}
+		// Fallback to in-memory
 		jobsMu.RLock()
 		j, ok := jobs[id]
 		jobsMu.RUnlock()
