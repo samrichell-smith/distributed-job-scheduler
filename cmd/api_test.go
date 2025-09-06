@@ -313,3 +313,62 @@ func TestJobThreadDemandTooHigh(t *testing.T) {
 		t.Errorf("expected sum 3, got %d", addResult.Sum)
 	}
 }
+
+func TestMultipleJobsConcurrency(t *testing.T) {
+	r := setupRouter()
+	defer sched.Stop()
+
+	jobRequests := []string{
+		`{"type":"add_numbers","priority":1,"thread_demand":1,"payload":{"x":1,"y":2}}`,
+		`{"type":"add_numbers","priority":1,"thread_demand":1,"payload":{"x":3,"y":4}}`,
+		`{"type":"add_numbers","priority":1,"thread_demand":1,"payload":{"x":5,"y":6}}`,
+		`{"type":"add_numbers","priority":1,"thread_demand":1,"payload":{"x":7,"y":8}}`,
+	}
+
+	jobIDs := make([]string, 0, len(jobRequests))
+
+	// POST all jobs
+	for _, jobData := range jobRequests {
+		req, _ := http.NewRequest(http.MethodPost, "/jobs", strings.NewReader(jobData))
+		req.Header.Set("Content-Type", "application/json")
+		w := httptest.NewRecorder()
+		r.ServeHTTP(w, req)
+
+		if w.Code != http.StatusAccepted {
+			t.Fatalf("expected status 202, got %d", w.Code)
+		}
+
+		var resp JobResponse
+		if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
+			t.Fatalf("invalid JSON response: %v", err)
+		}
+		jobIDs = append(jobIDs, resp.ID)
+	}
+
+	// Wait for all jobs to complete
+	for i, id := range jobIDs {
+		j := waitForJobCompletion(id, 5*time.Second) // longer timeout
+		if j == nil {
+			t.Fatalf("job %d did not complete within timeout", i+1)
+		}
+		if addRes, ok := j.Result.(job.AddNumbersResult); !ok {
+			t.Errorf("job %d expected AddNumbersResult, got %T", i+1, j.Result)
+		} else {
+			// Optional: verify the sum
+			expected := 0
+			switch i {
+			case 0:
+				expected = 3
+			case 1:
+				expected = 7
+			case 2:
+				expected = 11
+			case 3:
+				expected = 15
+			}
+			if addRes.Sum != expected {
+				t.Errorf("job %d expected sum %d, got %d", i+1, expected, addRes.Sum)
+			}
+		}
+	}
+}
