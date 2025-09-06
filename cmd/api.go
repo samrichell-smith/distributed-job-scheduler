@@ -86,6 +86,51 @@ func mapToStruct(m map[string]interface{}, out interface{}) error {
 }
 
 func main() {
+	// Create Gin router
+	r := gin.Default()
+
+	// API endpoint: GET /db/jobs - fetch all jobs from PostgreSQL
+	r.GET("/db/jobs", func(c *gin.Context) {
+		rows, err := db.Query(context.Background(), "SELECT id, type, priority, thread_demand, status, created_at, completed_at, result FROM jobs ORDER BY created_at DESC")
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+		defer rows.Close()
+		var jobs []JobResponse
+		for rows.Next() {
+			var j JobResponse
+			var resultRaw []byte
+			err := rows.Scan(&j.ID, &j.Type, &j.Priority, &j.ThreadDemand, &j.Status, &j.CreatedAt, &j.CompletedAt, &resultRaw)
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+				return
+			}
+			if len(resultRaw) > 0 {
+				json.Unmarshal(resultRaw, &j.Result)
+			}
+			jobs = append(jobs, j)
+		}
+		c.JSON(http.StatusOK, jobs)
+	})
+
+	// API endpoint: GET /db/jobs/:id - fetch a single job from PostgreSQL by ID
+	r.GET("/db/jobs/:id", func(c *gin.Context) {
+		id := c.Param("id")
+		var j JobResponse
+		var resultRaw []byte
+		err := db.QueryRow(context.Background(), "SELECT id, type, priority, thread_demand, status, created_at, completed_at, result FROM jobs WHERE id=$1", id).Scan(
+			&j.ID, &j.Type, &j.Priority, &j.ThreadDemand, &j.Status, &j.CreatedAt, &j.CompletedAt, &resultRaw)
+		if err != nil {
+			c.JSON(http.StatusNotFound, gin.H{"error": "job not found"})
+			return
+		}
+		if len(resultRaw) > 0 {
+			json.Unmarshal(resultRaw, &j.Result)
+		}
+		c.JSON(http.StatusOK, j)
+	})
+
 	// Initialize PostgreSQL connection
 	dbURL := "postgres://postgres:postgres@localhost:5432/job_scheduler"
 	var err error
@@ -143,9 +188,6 @@ func main() {
 	sched = scheduler.NewScheduler(workers)
 	sched.Run()
 	defer sched.Stop()
-
-	// Create Gin router
-	r := gin.Default()
 
 	r.POST("/jobs", func(c *gin.Context) {
 		var req SubmitJobRequest
