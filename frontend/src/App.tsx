@@ -2,7 +2,7 @@ import DashboardLayout from "./layouts/DashboardLayout";
 import JobList from "./components/JobList";
 import StatCard from "./components/StatCard";
 import { FaCheckCircle, FaHourglassHalf, FaExclamationTriangle } from "react-icons/fa";
-import "./App.css";
+import "./index.css";
 
 function App() {
   // Example stats for demo
