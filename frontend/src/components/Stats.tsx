@@ -21,30 +21,42 @@ export default function Stats() {
     const loadStats = async () => {
       try {
         const jobs = await fetchJobs();
+        console.log('All jobs:', jobs.map(j => `${j.id}: ${j.status}`));
         
+        // Filter jobs by status, matching backend state exactly
         const completed = jobs.filter(j => j.status === 'Completed');
-        const pending = jobs.filter(j => j.status === 'Pending' || j.status === 'Running');
+        const pending = jobs.filter(j => j.status === 'Pending');
+        const running = jobs.filter(j => j.status === 'Running');
         const failed = jobs.filter(j => j.status === 'Failed');
         
-        // Calculate average completion time for completed jobs
-        const completionTimes = completed
+        console.log('Stats:', {
+          completed: completed.length,
+          pending: pending.length,
+          running: running.length,
+          failed: failed.length
+        });
+        
+        // Calculate average completion time for recently completed jobs (last 24h)
+        const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+        const recentCompleted = completed
+          .filter(j => j.completed_at && new Date(j.completed_at) > oneDayAgo)
           .filter(j => j.completed_at && j.started_at)
           .map(j => new Date(j.completed_at!).getTime() - new Date(j.started_at!).getTime());
         
-        const averageCompletion = completionTimes.length > 0
-          ? completionTimes.reduce((a, b) => a + b, 0) / completionTimes.length
+        const averageCompletion = recentCompleted.length > 0
+          ? recentCompleted.reduce((a, b) => a + b, 0) / recentCompleted.length
           : undefined;
 
-        // Calculate total thread demand
-        const totalThreads = jobs.reduce((sum, job) => sum + job.thread_demand, 0);
+        // Calculate active thread demand (only from Running jobs)
+        const activeThreads = running.reduce((sum, job) => sum + job.thread_demand, 0);
 
         setStats({
           completed: completed.length,
-          pending: pending.length,
+          pending: pending.length + running.length,  // Active jobs include both pending and running
           failed: failed.length,
           total: jobs.length,
           averageCompletion,
-          totalThreads,
+          totalThreads: activeThreads,  // Only count threads from running jobs
         });
       } catch (err) {
         console.error('Failed to fetch stats:', err);
@@ -80,19 +92,19 @@ export default function Stats() {
         color="from-blue-400 to-blue-600"
       />
       <StatCard
+        title="Running"
+        value={stats.pending}  // This is actually running + pending now
+        icon={<BiTime />}
+        color="from-yellow-400 to-yellow-600"
+      />
+      <StatCard
         title="Completed"
         value={`${stats.completed} (${((stats.completed / stats.total) * 100).toFixed(1)}%)`}
         icon={<BiCheckCircle />}
         color="from-green-400 to-green-600"
       />
       <StatCard
-        title="Active Jobs"
-        value={stats.pending}
-        icon={<BiTime />}
-        color="from-yellow-400 to-yellow-600"
-      />
-      <StatCard
-        title="Failed Jobs"
+        title="Failed"
         value={stats.failed}
         icon={<BiError />}
         color="from-red-400 to-red-600"
