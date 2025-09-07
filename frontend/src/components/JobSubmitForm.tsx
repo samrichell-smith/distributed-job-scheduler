@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { submitJob } from '../services/api';
 
+const inputClasses = "mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none";
+
 type JobType = 'add_numbers' | 'reverse_string' | 'resize_image' | 'large_array_sum';
 
 interface JobFormData {
@@ -48,7 +50,7 @@ export default function JobSubmitForm({ onSubmit }: { onSubmit?: () => void }) {
               <label className="block text-sm font-medium text-gray-700">X Value</label>
               <input
                 type="number"
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                className={inputClasses}
                 value={payload.add_numbers.x}
                 onChange={(e) => setPayload({
                   ...payload,
@@ -60,7 +62,7 @@ export default function JobSubmitForm({ onSubmit }: { onSubmit?: () => void }) {
               <label className="block text-sm font-medium text-gray-700">Y Value</label>
               <input
                 type="number"
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                className={inputClasses}
                 value={payload.add_numbers.y}
                 onChange={(e) => setPayload({
                   ...payload,
@@ -107,7 +109,7 @@ export default function JobSubmitForm({ onSubmit }: { onSubmit?: () => void }) {
                 <label className="block text-sm font-medium text-gray-700">Width</label>
                 <input
                   type="number"
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                  className={inputClasses}
                   value={payload.resize_image.width}
                   onChange={(e) => setPayload({
                     ...payload,
@@ -119,7 +121,7 @@ export default function JobSubmitForm({ onSubmit }: { onSubmit?: () => void }) {
                 <label className="block text-sm font-medium text-gray-700">Height</label>
                 <input
                   type="number"
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                  className={inputClasses}
                   value={payload.resize_image.height}
                   onChange={(e) => setPayload({
                     ...payload,
@@ -185,7 +187,7 @@ export default function JobSubmitForm({ onSubmit }: { onSubmit?: () => void }) {
                   type="number"
                   min="1"
                   max="10"
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                  className={inputClasses}
                   value={priority}
                   onChange={(e) => setPriority(parseInt(e.target.value))}
                 />
@@ -197,7 +199,7 @@ export default function JobSubmitForm({ onSubmit }: { onSubmit?: () => void }) {
                   type="number"
                   min="1"
                   max="8"
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                  className={inputClasses}
                   value={threadDemand}
                   onChange={(e) => setThreadDemand(parseInt(e.target.value))}
                 />
