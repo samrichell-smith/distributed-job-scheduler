@@ -21,7 +21,7 @@ interface JobStats {
   failed: number;
 }
 
-const API_URL = "http://localhost:8080";
+const API_URL = import.meta.env.VITE_API_URL;
 
 async function fetchCurrentJobs(): Promise<Job[]> {
   const response = await fetch(`${API_URL}/jobs`, {

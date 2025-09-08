@@ -4,14 +4,17 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
+	"log"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"github.com/joho/godotenv"
 	"github.com/samrichell-smith/distributed-job-scheduler/internal/job"
 	"github.com/samrichell-smith/distributed-job-scheduler/internal/scheduler"
 	"github.com/samrichell-smith/distributed-job-scheduler/internal/worker"
@@ -21,11 +24,26 @@ import (
 func setupRouter() *gin.Engine {
 	gin.SetMode(gin.TestMode)
 
+	// Load test environment variables
+	if err := godotenv.Load("../.env.test"); err != nil {
+		log.Printf("Warning: .env.test file not found")
+	}
+
 	// Reset globals for each test
 	jobs = make(map[string]*job.Job)
+
+	queueSize := getEnvInt("WORKER_QUEUE_SIZE", 10)
 	workers := []*worker.Worker{
-		worker.NewWorker("w1", 4),
-		worker.NewWorker("w2", 2),
+		worker.NewWorkerWithQueueSize(
+			os.Getenv("WORKER_1_ID"),
+			getEnvInt("WORKER_1_THREADS", 4),
+			queueSize,
+		),
+		worker.NewWorkerWithQueueSize(
+			os.Getenv("WORKER_2_ID"),
+			getEnvInt("WORKER_2_THREADS", 2),
+			queueSize,
+		),
 	}
 	for _, w := range workers {
 		w.Start()

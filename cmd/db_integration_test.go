@@ -12,6 +12,7 @@ import (
 )
 
 func setupTestDB(t *testing.T) *pgxpool.Pool {
+	// Use the test database URL directly as it was working before
 	testDBURL := "postgres://postgres:postgres@localhost:5432/job_scheduler_test?sslmode=disable"
 	db, err := pgxpool.New(context.Background(), testDBURL)
 	if err != nil {

@@ -5,14 +5,18 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"log"
 	"net/http"
+	"os"
+	"strconv"
 	"sync"
 	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/joho/godotenv"
 	"github.com/redis/go-redis/v9"
 	"github.com/samrichell-smith/distributed-job-scheduler/internal/job"
 	"github.com/samrichell-smith/distributed-job-scheduler/internal/scheduler"
@@ -33,6 +37,16 @@ var (
 var (
 	db *pgxpool.Pool
 )
+
+// Helper function to get integer from environment variable with default
+func getEnvInt(key string, defaultVal int) int {
+	if value := os.Getenv(key); value != "" {
+		if intVal, err := strconv.Atoi(value); err == nil {
+			return intVal
+		}
+	}
+	return defaultVal
+}
 
 type SubmitJobRequest struct {
 	Type         string      `json:"type" binding:"required"`
@@ -177,8 +191,20 @@ func main() {
 		c.JSON(http.StatusOK, j)
 	})
 
+	// Load environment variables
+	if err := godotenv.Load(); err != nil {
+		log.Printf("Warning: .env file not found")
+	}
+
 	// Initialize PostgreSQL connection
-	dbURL := "postgres://postgres:postgres@localhost:5432/job_scheduler"
+	dbURL := fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=%s",
+		os.Getenv("POSTGRES_USER"),
+		os.Getenv("POSTGRES_PASSWORD"),
+		os.Getenv("POSTGRES_HOST"),
+		os.Getenv("POSTGRES_PORT"),
+		os.Getenv("POSTGRES_DB"),
+		os.Getenv("POSTGRES_SSL_MODE"),
+	)
 	var err error
 	db, err = pgxpool.New(context.Background(), dbURL)
 	if err != nil {
@@ -190,8 +216,8 @@ func main() {
 
 	// Initialize Redis client
 	redisClient = redis.NewClient(&redis.Options{
-		Addr:     "localhost:6379",
-		Password: "",
+		Addr:     fmt.Sprintf("%s:%s", os.Getenv("REDIS_HOST"), os.Getenv("REDIS_PORT")),
+		Password: os.Getenv("REDIS_PASSWORD"),
 		DB:       0,
 	})
 	if err := redisClient.Ping(redisCtx).Err(); err != nil {
@@ -222,9 +248,22 @@ func main() {
 		return job.NewJob(id, "large_array_sum", job.LargeArraySumJob, req.Priority, payload), nil
 	}
 	// Create workers
+	queueSize, err := strconv.Atoi(os.Getenv("WORKER_QUEUE_SIZE"))
+	if err != nil {
+		queueSize = 100 // default
+	}
+	
 	workers := []*worker.Worker{
-		worker.NewWorker("w1", 8),
-		worker.NewWorker("w2", 2),
+		worker.NewWorkerWithQueueSize(
+			os.Getenv("WORKER_1_ID"),
+			getEnvInt("WORKER_1_THREADS", 8),
+			queueSize,
+		),
+		worker.NewWorkerWithQueueSize(
+			os.Getenv("WORKER_2_ID"),
+			getEnvInt("WORKER_2_THREADS", 2),
+			queueSize,
+		),
 	}
 	for _, w := range workers {
 		w.Start()
@@ -317,7 +356,11 @@ func main() {
 		c.JSON(http.StatusOK, jobToResponse(j))
 	})
 
-	r.Run(":8080")
+	port := os.Getenv("API_PORT")
+	if port == "" {
+		port = "8080"
+	}
+	r.Run(":" + port)
 }
 
 // insertJobToDB inserts a completed job into the jobs table

@@ -15,9 +15,13 @@ type Worker struct {
 }
 
 func NewWorker(id string, numThreads int) *Worker {
+	return NewWorkerWithQueueSize(id, numThreads, 100)
+}
+
+func NewWorkerWithQueueSize(id string, numThreads int, queueSize int) *Worker {
 	w := &Worker{
 		ID:          id,
-		JobQueue:    make(chan *job.Job, 100),
+		JobQueue:    make(chan *job.Job, queueSize),
 		NumThreads:  numThreads,
 		FreeThreads: make(chan struct{}, numThreads),
 	}
