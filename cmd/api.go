@@ -252,7 +252,7 @@ func main() {
 	if err != nil {
 		queueSize = 100 // default
 	}
-	
+
 	workers := []*worker.Worker{
 		worker.NewWorkerWithQueueSize(
 			os.Getenv("WORKER_1_ID"),
