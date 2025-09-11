@@ -3,17 +3,31 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"fmt"
+	"os"
 	"testing"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/joho/godotenv"
 	"github.com/samrichell-smith/distributed-job-scheduler/internal/job"
 )
 
 func setupTestDB(t *testing.T) *pgxpool.Pool {
-	// Use the test database URL directly as it was working before
-	testDBURL := "postgres://postgres:postgres@localhost:5432/job_scheduler_test?sslmode=disable"
+	if err := godotenv.Load("../.env.test"); err != nil {
+		t.Logf("Warning: .env.test file not found: %v", err)
+	}
+
+	testDBURL := fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=%s",
+		os.Getenv("POSTGRES_USER"),
+		os.Getenv("POSTGRES_PASSWORD"),
+		os.Getenv("POSTGRES_HOST"),
+		os.Getenv("POSTGRES_PORT"),
+		os.Getenv("POSTGRES_DB"),
+		os.Getenv("POSTGRES_SSL_MODE"),
+	)
+
 	db, err := pgxpool.New(context.Background(), testDBURL)
 	if err != nil {
 		t.Fatalf("Failed to connect to test DB: %v", err)
