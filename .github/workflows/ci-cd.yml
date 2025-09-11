@@ -1,0 +1,219 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  # Frontend CI Job
+  frontend-ci:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./frontend
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+        cache-dependency-path: frontend/package-lock.json
+
+    - name: Install dependencies
+      run: npm ci
+
+    - name: Run linting
+      run: npm run lint
+
+    - name: Run type checking
+      run: npm run type-check
+
+    - name: Run tests
+      run: npm test
+
+    - name: Build frontend
+      run: npm run build
+
+    - name: Upload frontend build artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: frontend-build
+        path: frontend/dist/
+
+  # Backend/API CI Job
+  api-ci:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: test_password
+          POSTGRES_DB: test_db
+          POSTGRES_USER: test_user
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+      redis:
+        image: redis:7-alpine
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Go
+      uses: actions/setup-go@v4
+      with:
+        go-version: '1.23'
+
+    - name: Cache Go modules
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.cache/go-build
+          ~/go/pkg/mod
+        key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+        restore-keys: |
+          ${{ runner.os }}-go-
+
+    - name: Install dependencies
+      run: go mod download
+
+    - name: Run go vet
+      run: go vet ./...
+
+    - name: Run go fmt check
+      run: |
+        if [ "$(gofmt -s -l . | wc -l)" -gt 0 ]; then
+          echo "Go code is not formatted properly:"
+          gofmt -s -l .
+          exit 1
+        fi
+
+    - name: Run tests
+      run: go test -v ./...
+      env:
+        POSTGRES_HOST: localhost
+        POSTGRES_PORT: 5432
+        POSTGRES_USER: test_user
+        POSTGRES_PASSWORD: test_password
+        POSTGRES_DB: test_db
+        POSTGRES_SSL_MODE: disable
+        REDIS_HOST: localhost
+        REDIS_PORT: 6379
+
+    - name: Build API
+      run: go build -o ./bin/api ./cmd/api.go
+
+    - name: Upload API binary
+      uses: actions/upload-artifact@v4
+      with:
+        name: api-binary
+        path: bin/api
+
+  # Docker Build Job
+  docker-build:
+    runs-on: ubuntu-latest
+    needs: [frontend-ci, api-ci]
+    if: github.ref == 'refs/heads/main'
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Login to Docker Hub (optional)
+      uses: docker/login-action@v3
+      with:
+        username: ${{ secrets.DOCKER_USERNAME }}
+        password: ${{ secrets.DOCKER_PASSWORD }}
+      # Only login if you want to push to Docker Hub
+
+    - name: Build and test Docker images
+      run: |
+        docker-compose build
+        docker-compose up -d
+        sleep 30  # Wait for services to start
+        
+        # Basic health checks
+        curl -f http://localhost:8080/health || exit 1
+        curl -f http://localhost:3000 || exit 1
+        
+        docker-compose down
+
+    # Uncomment if you want to push to Docker Hub
+    # - name: Push Docker images
+    #   run: |
+    #     docker tag distributed-job-scheduler-api:latest ${{ secrets.DOCKER_USERNAME }}/job-scheduler-api:latest
+    #     docker tag distributed-job-scheduler-frontend:latest ${{ secrets.DOCKER_USERNAME }}/job-scheduler-frontend:latest
+    #     docker push ${{ secrets.DOCKER_USERNAME }}/job-scheduler-api:latest
+    #     docker push ${{ secrets.DOCKER_USERNAME }}/job-scheduler-frontend:latest
+
+  # Deployment Job (runs only on main branch)
+  deploy:
+    runs-on: ubuntu-latest
+    needs: [docker-build]
+    if: github.ref == 'refs/heads/main'
+    environment: production  # Requires manual approval
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Deploy to production
+      run: |
+        echo "🚀 Deploying to production..."
+        # Add your deployment commands here
+        # Examples:
+        # - SSH to your server and pull latest images
+        # - Deploy to AWS ECS, Google Cloud Run, etc.
+        # - Update Kubernetes deployments
+        # - Deploy to Vercel, Netlify, etc.
+        
+        # Example SSH deployment:
+        # ssh user@your-server.com "cd /path/to/project && docker-compose pull && docker-compose up -d"
+
+    - name: Notify deployment success
+      run: |
+        echo "✅ Deployment successful!"
+        # Add notifications (Slack, email, etc.)
+
+  # Security scanning (optional but recommended)
+  security-scan:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Run Trivy vulnerability scanner
+      uses: aquasecurity/trivy-action@master
+      with:
+        scan-type: 'fs'
+        scan-ref: '.'
+        format: 'sarif'
+        output: 'trivy-results.sarif'
+
+    - name: Upload Trivy scan results
+      uses: github/codeql-action/upload-sarif@v2
+      with:
+        sarif_file: 'trivy-results.sarif'
