@@ -12,7 +12,7 @@ interface JobFormData {
   payload: any;
 }
 
-export default function JobSubmitForm({ onSubmit }: { onSubmit?: () => void }) {
+export default function JobSubmitForm({ onSubmit }: { onSubmit?: (data: JobFormData) => void }) {
   const [isOpen, setIsOpen] = useState(false);
   const [jobType, setJobType] = useState<JobType>('add_numbers');
   const [priority, setPriority] = useState(1);
@@ -34,7 +34,13 @@ export default function JobSubmitForm({ onSubmit }: { onSubmit?: () => void }) {
         payload: payload[jobType]
       });
       setIsOpen(false);
-      if (onSubmit) onSubmit();
+      if (onSubmit)
+        onSubmit({
+          type: jobType,
+          priority,
+          thread_demand: threadDemand,
+          payload: payload[jobType]
+        });
     } catch (error) {
       console.error('Failed to submit job:', error);
       alert('Failed to submit job. Please try again.');

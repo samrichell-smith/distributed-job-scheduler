@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { type JobStats, type Job, fetchJobs } from '../services/api';
+import { type JobStats, fetchJobs } from '../services/api';
 import StatCard from './StatCard';
 import { BiTask, BiCheckCircle, BiError, BiTime, BiChip } from 'react-icons/bi';
 

@@ -1,0 +1,34 @@
+# Version control
+.git
+.gitignore
+
+# Dependencies
+node_modules
+vendor
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# Build artifacts
+frontend/dist
+frontend/build
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Development files
+*.log
+*.test
+*.out
+.DS_Store
+.vscode
+.idea
+
+# Docker files
+Dockerfile
+docker-compose.yml
+*.dockerfile
