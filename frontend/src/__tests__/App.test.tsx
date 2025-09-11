@@ -6,6 +6,6 @@ import App from '../App'
 describe('App', () => {
   it('renders without crashing', () => {
     render(<App />)
-    expect(screen.getByText(/job scheduler/i)).toBeInTheDocument()
+    expect(screen.getByText('Distributed Job Scheduler')).toBeInTheDocument()
   })
 })
