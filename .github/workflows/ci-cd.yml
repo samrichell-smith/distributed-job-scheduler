@@ -181,48 +181,73 @@ jobs:
 
     - name: Build and test Docker images
       run: |
+        # Create environment file for Docker Compose
+        cat > .env << EOF
+        POSTGRES_HOST=postgres
+        POSTGRES_PORT=5432
+        POSTGRES_USER=test_user
+        POSTGRES_PASSWORD=test_password
+        POSTGRES_DB=test_db
+        POSTGRES_SSL_MODE=disable
+        REDIS_HOST=redis
+        REDIS_PORT=6379
+        REDIS_PASSWORD=
+        API_PORT=8080
+        WORKER_1_ID=w1
+        WORKER_1_THREADS=8
+        WORKER_2_ID=w2
+        WORKER_2_THREADS=2
+        WORKER_QUEUE_SIZE=100
+        EOF
+        
         docker compose build
         docker compose up -d
-      env:
-        POSTGRES_HOST: localhost
-        POSTGRES_PORT: 5432
-        POSTGRES_USER: test_user
-        POSTGRES_PASSWORD: test_password
-        POSTGRES_DB: test_db
-        POSTGRES_SSL_MODE: disable
-        REDIS_HOST: localhost
-        REDIS_PORT: 6379
-        REDIS_PASSWORD: ""
-        API_PORT: 8080
-        WORKER_1_ID: w1
-        WORKER_1_THREADS: 8
-        WORKER_2_ID: w2
-        WORKER_2_THREADS: 2
-        WORKER_QUEUE_SIZE: 100
 
     - name: Wait and health check
       run: |
         # Wait for services to start and show logs if they fail
         echo "Waiting for services to start..."
-        sleep 30
+        sleep 45
         
         # Show container status
+        echo "Container status:"
         docker compose ps
         
-        # Show logs if containers are not healthy
-        echo "API container logs:"
-        docker compose logs api
-        echo "Frontend container logs:"
-        docker compose logs frontend
+        # Check if API container is running
+        if ! docker compose ps | grep -q "api.*Up"; then
+          echo "❌ API container is not running!"
+          echo "API container logs:"
+          docker compose logs api
+          exit 1
+        fi
+        
+        # Show recent logs
+        echo "Recent API container logs:"
+        docker compose logs --tail=10 api
+        echo "Recent Frontend container logs:"
+        docker compose logs --tail=10 frontend
         
         # Basic health checks - test actual endpoints instead of /health
         echo "Testing API endpoints..."
-        curl -f http://localhost:8080/jobs || (echo "API health check failed, showing logs:" && docker compose logs api && exit 1)
+        for i in {1..5}; do
+          if curl -f http://localhost:8080/jobs; then
+            echo "✅ API health check passed!"
+            break
+          else
+            echo "Attempt $i failed, retrying in 10s..."
+            sleep 10
+          fi
+          if [ $i -eq 5 ]; then
+            echo "❌ API health check failed after 5 attempts"
+            docker compose logs api
+            exit 1
+          fi
+        done
         
         echo "Testing frontend..."
         curl -f http://localhost:3000 || (echo "Frontend health check failed, showing logs:" && docker compose logs frontend && exit 1)
         
-        echo "Health checks passed!"
+        echo "✅ All health checks passed!"
 
     - name: Cleanup
       run: docker compose down
