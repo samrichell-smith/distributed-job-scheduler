@@ -183,13 +183,49 @@ jobs:
       run: |
         docker compose build
         docker compose up -d
-        sleep 30  # Wait for services to start
+      env:
+        POSTGRES_HOST: localhost
+        POSTGRES_PORT: 5432
+        POSTGRES_USER: test_user
+        POSTGRES_PASSWORD: test_password
+        POSTGRES_DB: test_db
+        POSTGRES_SSL_MODE: disable
+        REDIS_HOST: localhost
+        REDIS_PORT: 6379
+        REDIS_PASSWORD: ""
+        API_PORT: 8080
+        WORKER_1_ID: w1
+        WORKER_1_THREADS: 8
+        WORKER_2_ID: w2
+        WORKER_2_THREADS: 2
+        WORKER_QUEUE_SIZE: 100
+
+    - name: Wait and health check
+      run: |
+        # Wait for services to start and show logs if they fail
+        echo "Waiting for services to start..."
+        sleep 30
         
-        # Basic health checks
-        curl -f http://localhost:8080/health || exit 1
-        curl -f http://localhost:3000 || exit 1
+        # Show container status
+        docker compose ps
         
-        docker compose down
+        # Show logs if containers are not healthy
+        echo "API container logs:"
+        docker compose logs api
+        echo "Frontend container logs:"
+        docker compose logs frontend
+        
+        # Basic health checks - test actual endpoints instead of /health
+        echo "Testing API endpoints..."
+        curl -f http://localhost:8080/jobs || (echo "API health check failed, showing logs:" && docker compose logs api && exit 1)
+        
+        echo "Testing frontend..."
+        curl -f http://localhost:3000 || (echo "Frontend health check failed, showing logs:" && docker compose logs frontend && exit 1)
+        
+        echo "Health checks passed!"
+
+    - name: Cleanup
+      run: docker compose down
 
   # Deployment Job (runs only on main branch)
   deploy:
