@@ -200,49 +200,95 @@ jobs:
         WORKER_QUEUE_SIZE=100
         EOF
         
+        echo "Starting Docker Compose services..."
         docker compose build
+        
+        # Start database services first
+        docker compose up -d postgres redis
+        
+        # Wait for PostgreSQL to be ready
+        echo "Waiting for PostgreSQL to be ready..."
+        until docker compose exec -T postgres pg_isready -U test_user; do
+          echo "PostgreSQL is not ready yet, waiting..."
+          sleep 2
+        done
+        
+        # Create database schema
+        echo "Setting up database schema..."
+        docker compose exec -T postgres psql -U test_user -d test_db -c "
+          CREATE TABLE IF NOT EXISTS jobs (
+            id UUID PRIMARY KEY,
+            type TEXT NOT NULL,
+            priority INT NOT NULL,
+            thread_demand INT NOT NULL,
+            status TEXT NOT NULL,
+            created_at TIMESTAMP NOT NULL,
+            started_at TIMESTAMP,
+            completed_at TIMESTAMP,
+            result JSONB,
+            worker_id TEXT
+          );
+        "
+        
+        # Now start the API
+        echo "Starting API service..."
         docker compose up -d
 
     - name: Wait and health check
       run: |
-        # Wait for services to start and show logs if they fail
-        echo "Waiting for services to start..."
-        sleep 45
+        # Wait for API service to start
+        echo "Waiting for API service to start..."
+        sleep 20
         
         # Show container status
         echo "Container status:"
         docker compose ps
         
-        # Check if API container is running
+        # Check if API container is running, if not show logs
         if ! docker compose ps | grep -q "api.*Up"; then
           echo "❌ API container is not running!"
           echo "API container logs:"
           docker compose logs api
-          exit 1
+          
+          # Try to restart the API container
+          echo "Attempting to restart API container..."
+          docker compose up -d api
+          sleep 10
+          docker compose ps
         fi
         
-        # Show recent logs
+        # Show recent logs for debugging
         echo "Recent API container logs:"
-        docker compose logs --tail=10 api
-        echo "Recent Frontend container logs:"
-        docker compose logs --tail=10 frontend
+        docker compose logs --tail=20 api
         
-        # Basic health checks - test actual endpoints instead of /health
+        # Test API with retries
         echo "Testing API endpoints..."
-        for i in {1..5}; do
-          if curl -f http://localhost:8080/jobs; then
-            echo "✅ API health check passed!"
+        for i in {1..10}; do
+          if curl -f -s http://localhost:8080/jobs > /dev/null; then
+            echo "✅ API health check passed on attempt $i!"
             break
           else
-            echo "Attempt $i failed, retrying in 10s..."
-            sleep 10
+            echo "Attempt $i failed, retrying in 5s..."
+            if [ $i -eq 5 ]; then
+              echo "Showing API logs after 5 failed attempts:"
+              docker compose logs api
+            fi
+            sleep 5
           fi
-          if [ $i -eq 5 ]; then
-            echo "❌ API health check failed after 5 attempts"
+          if [ $i -eq 10 ]; then
+            echo "❌ API health check failed after 10 attempts"
+            echo "Final API logs:"
             docker compose logs api
+            echo "Container status:"
+            docker compose ps
             exit 1
           fi
         done
+        
+        # Test the actual API response
+        echo "Testing API response..."
+        response=$(curl -s http://localhost:8080/jobs)
+        echo "API response: $response"
         
         echo "Testing frontend..."
         curl -f http://localhost:3000 || (echo "Frontend health check failed, showing logs:" && docker compose logs frontend && exit 1)
