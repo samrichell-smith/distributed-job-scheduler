@@ -32,7 +32,32 @@ func setupTestDB(t *testing.T) *pgxpool.Pool {
 	if err != nil {
 		t.Fatalf("Failed to connect to test DB: %v", err)
 	}
-	db.Exec(context.Background(), "TRUNCATE jobs")
+
+	// Create the schema if it doesn't exist
+	schemaSQL := `
+		CREATE TABLE IF NOT EXISTS jobs (
+			id UUID PRIMARY KEY,
+			type TEXT NOT NULL,
+			priority INT NOT NULL,
+			thread_demand INT NOT NULL,
+			status TEXT NOT NULL,
+			created_at TIMESTAMP NOT NULL,
+			started_at TIMESTAMP,
+			completed_at TIMESTAMP,
+			result JSONB,
+			worker_id TEXT
+		);
+	`
+	
+	if _, err := db.Exec(context.Background(), schemaSQL); err != nil {
+		t.Fatalf("Failed to create schema: %v", err)
+	}
+
+	// Clean up any existing test data
+	if _, err := db.Exec(context.Background(), "TRUNCATE jobs CASCADE"); err != nil {
+		t.Logf("Warning: Failed to truncate jobs table: %v", err)
+	}
+
 	return db
 }
 

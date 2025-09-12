@@ -110,8 +110,11 @@ jobs:
 
     - name: Setup test database
       run: |
-        # Create test database and run any setup SQL
+        # Create test database and run schema setup
         PGPASSWORD=test_password psql -h localhost -U test_user -d test_db -c "SELECT 1;"
+        
+        # Create the database schema
+        PGPASSWORD=test_password psql -h localhost -U test_user -d test_db -f db/schema.sql
 
     - name: Install Redis CLI
       run: sudo apt-get update && sudo apt-get install -y redis-tools

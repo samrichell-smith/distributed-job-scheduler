@@ -32,13 +32,22 @@ tmp/
 *.tmp
 
 # -----------------------
+# Environment files
+# -----------------------
+# Ignore production env file (contains secrets)
+.env
+# Ignore local environment files (personal overrides)
+*.env.local
+*.env.*.local
+# But keep test environment files (should be committed)
+!.env.test
+!.env.example
+
+# -----------------------
 # Docker
 # -----------------------
 # Ignore Docker image layers, containers, etc.
 docker-compose.override.yml
-*.env
-*.env.local
-*.env.*.local
 docker-compose.override.*.yml
 
 # -----------------------
