@@ -87,9 +87,18 @@ func (s *Scheduler) workerLoop(w *worker.Worker) {
 	for {
 		s.mu.Lock()
 
+		// Check for stop signal first
+		select {
+		case <-s.stopCh:
+			s.mu.Unlock()
+			return
+		default:
+		}
+
 		// Wait while no jobs available
 		for len(s.jobQ) == 0 {
 			s.cond.Wait()
+			// Check stop signal after waking up
 			select {
 			case <-s.stopCh:
 				s.mu.Unlock()
