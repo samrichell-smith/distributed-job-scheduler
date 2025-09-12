@@ -48,7 +48,7 @@ func setupTestDB(t *testing.T) *pgxpool.Pool {
 			worker_id TEXT
 		);
 	`
-	
+
 	if _, err := db.Exec(context.Background(), schemaSQL); err != nil {
 		t.Fatalf("Failed to create schema: %v", err)
 	}
