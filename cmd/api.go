@@ -249,6 +249,32 @@ func main() {
 		return job.NewJob(id, "large_array_sum", job.LargeArraySumJob, req.Priority, payload), nil
 	}
 
+	// Register reverse_string
+	jobRegistry["reverse_string"] = func(id string, req SubmitJobRequest) (*job.Job, error) {
+		var payload job.ReverseStringPayload
+		m, ok := req.Payload.(map[string]interface{})
+		if !ok {
+			return nil, errors.New("invalid payload for reverse_string")
+		}
+		if err := mapToStruct(m, &payload); err != nil {
+			return nil, err
+		}
+		return job.NewJob(id, "reverse_string", job.ReverseStringJob, req.Priority, payload), nil
+	}
+
+	// Register resize_image
+	jobRegistry["resize_image"] = func(id string, req SubmitJobRequest) (*job.Job, error) {
+		var payload job.ResizeImagePayload
+		m, ok := req.Payload.(map[string]interface{})
+		if !ok {
+			return nil, errors.New("invalid payload for resize_image")
+		}
+		if err := mapToStruct(m, &payload); err != nil {
+			return nil, err
+		}
+		return job.NewJob(id, "resize_image", job.ResizeImageJob, req.Priority, payload), nil
+	}
+
 	// Helper to normalize job type strings (e.g., AddNumbers -> add_numbers)
 	normalizeJobType := func(s string) string {
 		if s == "" {

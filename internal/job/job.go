@@ -59,21 +59,45 @@ func (j *Job) Execute() {
 	}
 	switch j.Type {
 	case AddNumbersJob:
-		payload := j.Payload.(AddNumbersPayload)
+		payload, ok := j.Payload.(AddNumbersPayload)
+		if !ok {
+			j.Status = Failed
+			j.Result = AddNumbersResult{Sum: 0}
+			j.CompletedAt = time.Now()
+			return
+		}
 		j.Result = AddNumbersResult{Sum: payload.X + payload.Y}
 
 	case ReverseStringJob:
-		payload := j.Payload.(ReverseStringPayload)
+		payload, ok := j.Payload.(ReverseStringPayload)
+		if !ok {
+			j.Status = Failed
+			j.Result = ReverseStringResult{Reversed: ""}
+			j.CompletedAt = time.Now()
+			return
+		}
 		j.Result = ReverseStringResult{Reversed: reverse(payload.Text)}
 
 	case ResizeImageJob:
-		payload := j.Payload.(ResizeImagePayload)
+		payload, ok := j.Payload.(ResizeImagePayload)
+		if !ok {
+			j.Status = Failed
+			j.Result = ResizeImageResult{ResizedURL: ""}
+			j.CompletedAt = time.Now()
+			return
+		}
 		resized := ResizeImage(payload.URL, payload.Width, payload.Height) // call helper
 		j.Result = ResizeImageResult{ResizedURL: resized}
 
 	case LargeArraySumJob:
 		// fallback if called single threaded
-		payload := j.Payload.(LargeArraySumPayload)
+		payload, ok := j.Payload.(LargeArraySumPayload)
+		if !ok {
+			j.Status = Failed
+			j.Result = LargeArraySumResult{Sum: 0}
+			j.CompletedAt = time.Now()
+			return
+		}
 		sum := 0
 		for _, v := range payload.Array {
 			sum += v
@@ -93,19 +117,23 @@ func (j *Job) ExecuteChunk(threadID, totalThreads int) {
 		return // other jobs do nothing
 	}
 
-	payload := j.Payload.(LargeArraySumPayload)
+	payload, ok := j.Payload.(LargeArraySumPayload)
+	if !ok {
+		return
+	}
 	n := len(payload.Array)
-	chunkSize := n / totalThreads
-	start := threadID * chunkSize
-	end := start + chunkSize
-	if threadID == totalThreads-1 {
-		end = n // last thread handles remainder
+	if n == 0 || totalThreads <= 0 || threadID < 0 || threadID >= totalThreads {
+		return
 	}
-
+	// Use integer-math partitioning that works when totalThreads > n
+	start := threadID * n / totalThreads
+	end := (threadID + 1) * n / totalThreads
+	if start >= end {
+		return
+	}
 	localSum := 0
-	for _, v := range payload.Array[start:end] {
-		localSum += v
+	for i := start; i < end; i++ {
+		localSum += payload.Array[i]
 	}
-
 	j.addPartialSum(localSum)
 }
