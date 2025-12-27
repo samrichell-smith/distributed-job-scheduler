@@ -1,6 +1,9 @@
 package job
 
-import "time"
+import (
+	"sync"
+	"time"
+)
 
 type Status string
 
@@ -28,6 +31,7 @@ type Job struct {
 	Priority     int
 	Payload      interface{}
 	Result       interface{}
+	resultMu     sync.Mutex
 	CreatedAt    time.Time
 	StartedAt    time.Time
 	CompletedAt  time.Time
@@ -46,8 +50,13 @@ func NewJob(id, name string, jobType JobType, priority int, payload interface{})
 	}
 }
 
+// probably want to abstract this more in the fututre, so we don't have to hard code job definition cases into here
 func (j *Job) Execute() {
-	j.Status = Pending
+	// mark as running and set StartedAt if not set
+	j.Status = Running
+	if j.StartedAt.IsZero() {
+		j.StartedAt = time.Now()
+	}
 	switch j.Type {
 	case AddNumbersJob:
 		payload := j.Payload.(AddNumbersPayload)

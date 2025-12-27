@@ -48,7 +48,7 @@ const JobList = () => {
   if (error) {
     return (
       <div className="p-4">
-        <div className="bg-red-50 text-red-700 p-4 rounded-lg">{error}</div>
+        <div className="bg-red-50 text-red-700 p-4">{error}</div>
       </div>
     );
   }
@@ -56,9 +56,9 @@ const JobList = () => {
   return (
     <div className="overflow-x-auto p-4">
       <h2 className="text-xl font-semibold mb-4 text-gray-800">All Jobs</h2>
-      <table className="min-w-full bg-white rounded-xl shadow-lg border border-gray-200">
+      <table className="min-w-full bg-white shadow-sm border border-gray-200">
         <thead>
-          <tr className="bg-blue-50 text-blue-900 text-sm uppercase tracking-wider">
+          <tr className="bg-gray-100 text-gray-700 text-sm uppercase tracking-wider">
             <th className="py-3 px-4 text-left">ID</th>
             <th className="py-3 px-4 text-left">Type</th>
             <th className="py-3 px-4 text-left">Status</th>
@@ -72,18 +72,18 @@ const JobList = () => {
         <tbody className="divide-y divide-gray-200">
           {jobs.map((job) => (
             <tr key={job.id} className="hover:bg-gray-50">
-              <td className="py-3 px-4 font-mono text-sm text-blue-600">{job.id}</td>
+              <td className="py-3 px-4 font-mono text-sm text-gray-700">{job.id}</td>
               <td className="py-3 px-4 text-gray-900">{job.type}</td>
               <td className="py-3 px-4">
                 <span
-                  className={`px-2 py-1 rounded-full text-sm font-medium ${
+                  className={`px-2 py-1 text-sm font-medium ${
                     job.status === 'Completed'
-                      ? 'bg-green-100 text-green-800'
+                      ? 'bg-gray-100 text-gray-800 border border-gray-200'
                       : job.status === 'Running'
-                      ? 'bg-blue-100 text-blue-800'
+                      ? 'bg-gray-100 text-gray-800 border border-gray-200'
                       : job.status === 'Failed'
-                      ? 'bg-red-100 text-red-800'
-                      : 'bg-yellow-100 text-yellow-800'
+                      ? 'bg-red-50 text-red-700 border border-red-100'
+                      : 'bg-yellow-50 text-yellow-800 border border-yellow-100'
                   }`}
                 >
                   {job.status}

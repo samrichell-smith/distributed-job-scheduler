@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"os"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -247,6 +248,39 @@ func main() {
 		}
 		return job.NewJob(id, "large_array_sum", job.LargeArraySumJob, req.Priority, payload), nil
 	}
+
+	// Helper to normalize job type strings (e.g., AddNumbers -> add_numbers)
+	normalizeJobType := func(s string) string {
+		if s == "" {
+			return s
+		}
+		if strings.Contains(s, "_") {
+			return strings.ToLower(s)
+		}
+		var out []rune
+		for i, r := range s {
+			if i > 0 && r >= 'A' && r <= 'Z' {
+				out = append(out, '_')
+			}
+			out = append(out, r)
+		}
+		return strings.ToLower(string(out))
+	}
+
+	lookupFactory := func(t string) (JobFactory, bool) {
+		if f, ok := jobRegistry[t]; ok {
+			return f, true
+		}
+		nt := normalizeJobType(t)
+		if f, ok := jobRegistry[nt]; ok {
+			return f, true
+		}
+		// also try lowercasing directly
+		if f, ok := jobRegistry[strings.ToLower(t)]; ok {
+			return f, true
+		}
+		return nil, false
+	}
 	// Create workers
 	queueSize, err := strconv.Atoi(os.Getenv("WORKER_QUEUE_SIZE"))
 	if err != nil {
@@ -281,7 +315,7 @@ func main() {
 			return
 		}
 
-		factory, ok := jobRegistry[req.Type]
+		factory, ok := lookupFactory(req.Type)
 		if !ok {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "unsupported job type"})
 			return

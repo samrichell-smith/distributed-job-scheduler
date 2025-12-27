@@ -27,7 +27,7 @@ type PriorityStats = {
   count: number;
 };
 
-const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042'];
+const COLORS = ['#6B7280', '#10B981', '#F59E0B', '#B91C1C'];
 
 export default function Analytics() {
   const [jobs, setJobs] = useState<Job[]>([]);
@@ -123,7 +123,7 @@ export default function Analytics() {
       
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Job Type Distribution */}
-        <div className="bg-white p-6 rounded-xl shadow-lg">
+        <div className="bg-white p-6 shadow-sm">
           <h3 className="text-lg font-semibold mb-4 text-gray-700">Job Type Distribution</h3>
           <ResponsiveContainer width="100%" height={300}>
             <BarChart data={jobTypeData} margin={{ top: 10, right: 30, left: 0, bottom: 20 }}>
@@ -146,8 +146,7 @@ export default function Analytics() {
               />
               <Bar 
                 dataKey="count" 
-                fill="#0088FE"
-                radius={[4, 4, 0, 0]}
+                fill="#374151"
                 maxBarSize={50}
               />
             </BarChart>
@@ -155,7 +154,7 @@ export default function Analytics() {
         </div>
 
         {/* Success/Failure Rate */}
-        <div className="bg-white p-6 rounded-xl shadow-lg">
+        <div className="bg-white p-6 shadow-sm">
           <h3 className="text-lg font-semibold mb-4 text-gray-700">Job Status Distribution</h3>
           <ResponsiveContainer width="100%" height={300}>
             <PieChart>
@@ -170,7 +169,7 @@ export default function Analytics() {
                 }}
                 outerRadius={100}
                 innerRadius={60}
-                fill="#8884d8"
+                fill="#6B7280"
                 dataKey="value"
               >
                 {statusData.map((_entry, index) => (
@@ -184,7 +183,7 @@ export default function Analytics() {
         </div>
 
         {/* Average Completion Time */}
-        <div className="bg-white p-6 rounded-xl shadow-lg">
+        <div className="bg-white p-6 shadow-sm">
           <h3 className="text-lg font-semibold mb-4 text-gray-700">Average Completion Time by Type</h3>
           <ResponsiveContainer width="100%" height={300}>
             <BarChart data={completionTimeData} margin={{ top: 10, right: 30, left: 0, bottom: 20 }}>
@@ -210,8 +209,7 @@ export default function Analytics() {
               />
               <Bar 
                 dataKey="avgTime" 
-                fill="#00C49F"
-                radius={[4, 4, 0, 0]}
+                fill="#374151"
                 maxBarSize={50}
               />
             </BarChart>
@@ -219,7 +217,7 @@ export default function Analytics() {
         </div>
 
         {/* Priority Distribution */}
-        <div className="bg-white p-6 rounded-xl shadow-lg">
+        <div className="bg-white p-6 shadow-sm">
           <h3 className="text-lg font-semibold mb-4 text-gray-700">Job Priority Distribution</h3>
           <ResponsiveContainer width="100%" height={300}>
             <LineChart data={priorityData} margin={{ top: 10, right: 30, left: 0, bottom: 5 }}>
@@ -241,10 +239,10 @@ export default function Analytics() {
               <Line 
                 type="monotone" 
                 dataKey="count" 
-                stroke="#FF8042"
+                stroke="#374151"
                 strokeWidth={2}
-                dot={{ fill: '#FF8042', strokeWidth: 2 }}
-                activeDot={{ r: 6, stroke: '#FF8042', strokeWidth: 2 }}
+                dot={{ fill: '#374151', strokeWidth: 2 }}
+                activeDot={{ r: 6, stroke: '#374151', strokeWidth: 2 }}
               />
             </LineChart>
           </ResponsiveContainer>
@@ -253,23 +251,23 @@ export default function Analytics() {
 
       {/* Summary Stats */}
       <div className="mt-6 grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div className="bg-white p-4 rounded-lg shadow-md">
+        <div className="bg-white p-4 shadow-sm">
           <h4 className="text-sm font-medium text-gray-500">Total Jobs</h4>
           <p className="text-2xl font-bold text-gray-800">{jobs.length}</p>
         </div>
-        <div className="bg-white p-4 rounded-lg shadow-md">
+        <div className="bg-white p-4 shadow-sm">
           <h4 className="text-sm font-medium text-gray-500">Success Rate</h4>
           <p className="text-2xl font-bold text-gray-800">
             {jobs.length ? ((successRate.success / jobs.length) * 100).toFixed(1) : 0}%
           </p>
         </div>
-        <div className="bg-white p-4 rounded-lg shadow-md">
+        <div className="bg-white p-4 shadow-sm">
           <h4 className="text-sm font-medium text-gray-500">Avg Priority</h4>
           <p className="text-2xl font-bold text-gray-800">
             {jobs.length ? (jobs.reduce((sum, job) => sum + job.priority, 0) / jobs.length).toFixed(1) : 0}
           </p>
         </div>
-        <div className="bg-white p-4 rounded-lg shadow-md">
+        <div className="bg-white p-4 shadow-sm">
           <h4 className="text-sm font-medium text-gray-500">Active Jobs</h4>
           <p className="text-2xl font-bold text-gray-800">{successRate.pending}</p>
         </div>

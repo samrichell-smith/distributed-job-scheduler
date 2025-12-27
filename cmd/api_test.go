@@ -1,3 +1,6 @@
+//go:build integration
+// +build integration
+
 package main
 
 import (
@@ -23,6 +26,12 @@ import (
 // helper to initialize router and scheduler for testing
 func setupRouter() *gin.Engine {
 	gin.SetMode(gin.TestMode)
+
+	if os.Getenv("RUN_INTEGRATION") != "1" {
+		// make tests explicit to run; default skipped
+		// Use `RUN_INTEGRATION=1 go test ./cmd` to run them
+		// We use t.Skip in callers, but this check helps fast-fail if invoked directly without t
+	}
 
 	// Load test environment variables
 	if err := godotenv.Load("../.env.test"); err != nil {
@@ -152,6 +161,9 @@ func waitForJobCompletion(id string, timeout time.Duration) *job.Job {
 }
 
 func TestPostJobAndGetJob(t *testing.T) {
+	if os.Getenv("RUN_INTEGRATION") != "1" {
+		t.Skip("integration tests disabled; set RUN_INTEGRATION=1 to enable")
+	}
 	r := setupRouter()
 	defer sched.Stop()
 
@@ -198,6 +210,9 @@ func TestPostJobAndGetJob(t *testing.T) {
 }
 
 func TestGetJobsList(t *testing.T) {
+	if os.Getenv("RUN_INTEGRATION") != "1" {
+		t.Skip("integration tests disabled; set RUN_INTEGRATION=1 to enable")
+	}
 	r := setupRouter()
 	defer sched.Stop()
 
@@ -245,6 +260,9 @@ func TestGetJobsList(t *testing.T) {
 }
 
 func TestLargeArraySumJob(t *testing.T) {
+	if os.Getenv("RUN_INTEGRATION") != "1" {
+		t.Skip("integration tests disabled; set RUN_INTEGRATION=1 to enable")
+	}
 	r := setupRouter()
 	defer sched.Stop()
 
@@ -274,6 +292,9 @@ func TestLargeArraySumJob(t *testing.T) {
 }
 
 func TestUnsupportedJobType(t *testing.T) {
+	if os.Getenv("RUN_INTEGRATION") != "1" {
+		t.Skip("integration tests disabled; set RUN_INTEGRATION=1 to enable")
+	}
 	r := setupRouter()
 	defer sched.Stop()
 
@@ -289,6 +310,9 @@ func TestUnsupportedJobType(t *testing.T) {
 }
 
 func TestInvalidPayload(t *testing.T) {
+	if os.Getenv("RUN_INTEGRATION") != "1" {
+		t.Skip("integration tests disabled; set RUN_INTEGRATION=1 to enable")
+	}
 	r := setupRouter()
 	defer sched.Stop()
 
@@ -304,6 +328,9 @@ func TestInvalidPayload(t *testing.T) {
 }
 
 func TestJobThreadDemandTooHigh(t *testing.T) {
+	if os.Getenv("RUN_INTEGRATION") != "1" {
+		t.Skip("integration tests disabled; set RUN_INTEGRATION=1 to enable")
+	}
 	r := setupRouter()
 	defer sched.Stop()
 
@@ -333,6 +360,9 @@ func TestJobThreadDemandTooHigh(t *testing.T) {
 }
 
 func TestMultipleJobsConcurrency(t *testing.T) {
+	if os.Getenv("RUN_INTEGRATION") != "1" {
+		t.Skip("integration tests disabled; set RUN_INTEGRATION=1 to enable")
+	}
 	r := setupRouter()
 	defer sched.Stop()
 

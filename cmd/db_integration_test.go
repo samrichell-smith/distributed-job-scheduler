@@ -1,3 +1,6 @@
+//go:build integration
+// +build integration
+
 package main
 
 import (
@@ -11,26 +14,63 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/joho/godotenv"
+	"github.com/ory/dockertest/v3"
+	"github.com/ory/dockertest/v3/docker"
 	"github.com/samrichell-smith/distributed-job-scheduler/internal/job"
 )
 
 func setupTestDB(t *testing.T) *pgxpool.Pool {
+	// integration tests gated by env var
+	if os.Getenv("RUN_INTEGRATION") != "1" {
+		t.Skip("integration tests disabled; set RUN_INTEGRATION=1 to enable")
+	}
+
 	if err := godotenv.Load("../.env.test"); err != nil {
 		t.Logf("Warning: .env.test file not found: %v", err)
 	}
 
-	testDBURL := fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=%s",
-		os.Getenv("POSTGRES_USER"),
-		os.Getenv("POSTGRES_PASSWORD"),
-		os.Getenv("POSTGRES_HOST"),
-		os.Getenv("POSTGRES_PORT"),
-		os.Getenv("POSTGRES_DB"),
-		os.Getenv("POSTGRES_SSL_MODE"),
-	)
-
-	db, err := pgxpool.New(context.Background(), testDBURL)
+	// Start a postgres container for tests using dockertest
+	pool, err := dockertest.NewPool("")
 	if err != nil {
-		t.Fatalf("Failed to connect to test DB: %v", err)
+		t.Fatalf("Could not connect to docker: %v", err)
+	}
+
+	// Pull and run postgres
+	resource, err := pool.RunWithOptions(&dockertest.RunOptions{
+		Repository: "postgres",
+		Tag:        "16",
+		Env: []string{
+			"POSTGRES_USER=your_username",
+			"POSTGRES_PASSWORD=your_password",
+			"POSTGRES_DB=job_scheduler",
+		},
+	}, func(config *docker.HostConfig) {
+		config.AutoRemove = true
+		config.RestartPolicy = docker.RestartPolicy{Name: "no"}
+	})
+	if err != nil {
+		t.Fatalf("Could not start postgres container: %v", err)
+	}
+
+	// Ensure cleanup
+	t.Cleanup(func() {
+		_ = pool.Purge(resource)
+	})
+
+	// Exponential backoff to wait for Postgres
+	var db *pgxpool.Pool
+	if err := pool.Retry(func() error {
+		hostPort := resource.GetHostPort("5432/tcp")
+		testDBURL := fmt.Sprintf("postgres://%s:%s@%s/%s?sslmode=disable",
+			"your_username", "your_password", hostPort, "job_scheduler")
+		var err error
+		db, err = pgxpool.New(context.Background(), testDBURL)
+		if err != nil {
+			return err
+		}
+		return db.Ping(context.Background())
+	}); err != nil {
+		t.Fatalf("Could not connect to database: %v", err)
 	}
 
 	// Create the schema if it doesn't exist

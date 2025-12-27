@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { submitJob } from '../services/api';
 
-const inputClasses = "mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none";
+const inputClasses = "mt-1 block w-full border border-gray-300 shadow-sm focus:border-gray-500 focus:ring-gray-400 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none";
 
 type JobType = 'add_numbers' | 'reverse_string' | 'resize_image' | 'large_array_sum';
 
@@ -163,20 +163,20 @@ export default function JobSubmitForm({ onSubmit }: { onSubmit?: (data: JobFormD
     <div className="relative">
       <button
         onClick={() => setIsOpen(true)}
-        className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+        className="bg-gray-800 text-white px-4 py-2 rounded-none hover:bg-gray-700 transition-colors"
       >
         Create New Job
       </button>
 
       {isOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-md">
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white p-6 w-full max-w-md shadow-lg">
             <h2 className="text-xl font-semibold mb-4">Create New Job</h2>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700">Job Type</label>
                 <select
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                  className="mt-1 block w-full border border-gray-300 shadow-sm focus:border-gray-500 focus:ring-gray-400"
                   value={jobType}
                   onChange={(e) => setJobType(e.target.value as JobType)}
                 >
@@ -217,13 +217,13 @@ export default function JobSubmitForm({ onSubmit }: { onSubmit?: (data: JobFormD
                 <button
                   type="button"
                   onClick={() => setIsOpen(false)}
-                  className="px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-md"
+                  className="px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-none"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-md"
+                  className="px-4 py-2 text-sm font-medium text-white bg-gray-800 hover:bg-gray-700 rounded-none"
                 >
                   Submit Job
                 </button>

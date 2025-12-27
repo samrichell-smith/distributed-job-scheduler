@@ -4,18 +4,11 @@ import { FaTasks, FaListUl, FaChartBar, FaCog } from "react-icons/fa";
 export default function Sidebar() {
   const location = useLocation();
   return (
-    <aside className="h-screen w-60 bg-gradient-to-b from-gray-900 to-gray-800 text-gray-100 flex flex-col shadow-2xl border-r border-gray-800 relative">
-      {/* Decorative background accent */}
-      <div className="absolute inset-0 pointer-events-none">
-        <div className="absolute -top-10 -left-10 w-40 h-40 bg-blue-900 opacity-20 rounded-full blur-2xl" />
-        <div className="absolute bottom-0 right-0 w-32 h-32 bg-blue-700 opacity-10 rounded-full blur-2xl" />
-      </div>
+    <aside className="h-screen w-60 bg-gray-900 text-gray-100 flex flex-col shadow-inner border-r border-gray-800 relative">
       {/* Logo/Header */}
     <div className="flex items-center gap-3 px-6 py-7 border-b border-gray-800 bg-gray-900/90 z-10 relative tracking-tight select-none">
-  <FaTasks className="text-blue-500 drop-shadow-md" size={32} />
-        <span className="bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent">
-          Job Scheduler
-        </span>
+  <FaTasks className="text-gray-300" size={32} />
+        <span className="text-gray-100 font-semibold">Job Scheduler</span>
       </div>
       {/* Navigation */}
       <nav className="flex-1 px-4 py-8 z-10 relative">
@@ -26,18 +19,18 @@ export default function Sidebar() {
           <li>
             <Link
               to="/"
-              className={`flex items-center gap-3 px-3 py-2 rounded-lg font-medium transition-all hover:bg-blue-900/20 hover:text-blue-400 focus:bg-blue-900/30 focus:outline-none ${location.pathname === '/' ? 'bg-blue-900/10 text-blue-400' : ''}`}
+              className={`flex items-center gap-3 px-3 py-2 rounded-none font-medium transition-colors hover:bg-gray-800/40 hover:text-gray-100 focus:bg-gray-800/60 focus:outline-none ${location.pathname === '/' ? 'bg-gray-800/30 text-gray-100' : 'text-gray-300'}`}
             >
-              <FaListUl className="text-blue-400" />
+              <FaListUl className="text-gray-300" />
               Jobs
             </Link>
           </li>
           <li>
             <Link
               to="/analytics"
-              className={`flex items-center gap-3 px-3 py-2 rounded-lg font-medium transition-all hover:bg-blue-900/20 hover:text-blue-400 focus:bg-blue-900/30 focus:outline-none ${location.pathname === '/analytics' ? 'bg-blue-900/10 text-blue-400' : ''}`}
+              className={`flex items-center gap-3 px-3 py-2 rounded-none font-medium transition-colors hover:bg-gray-800/40 hover:text-gray-100 focus:bg-gray-800/60 focus:outline-none ${location.pathname === '/analytics' ? 'bg-gray-800/30 text-gray-100' : 'text-gray-300'}`}
             >
-              <FaChartBar className="text-cyan-400" />
+              <FaChartBar className="text-gray-300" />
               Analytics
             </Link>
           </li>
@@ -49,7 +42,7 @@ export default function Sidebar() {
           <li>
             <a
               href="#"
-              className="flex items-center gap-3 px-3 py-2 rounded-lg font-medium transition-all hover:bg-blue-900/20 hover:text-blue-400 focus:bg-blue-900/30 focus:outline-none"
+              className="flex items-center gap-3 px-3 py-2 rounded-none font-medium transition-colors hover:bg-gray-800/40 hover:text-gray-100 focus:bg-gray-800/60 focus:outline-none text-gray-300"
             >
               <FaCog className="text-gray-400" />
               Preferences

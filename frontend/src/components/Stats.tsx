@@ -76,7 +76,7 @@ export default function Stats() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 p-4">
         {[...Array(4)].map((_, i) => (
           <div key={i} className="animate-pulse">
-            <div className="bg-gray-200 rounded-xl h-[110px]" />
+            <div className="bg-gray-200 h-[110px]" />
           </div>
         ))}
       </div>
@@ -85,43 +85,13 @@ export default function Stats() {
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 p-4">
-      <StatCard
-        title="Total Jobs"
-        value={stats.total}
-        icon={<BiTask />}
-        color="from-blue-400 to-blue-600"
-      />
-      <StatCard
-        title="Running"
-        value={stats.pending}  // This is actually running + pending now
-        icon={<BiTime />}
-        color="from-yellow-400 to-yellow-600"
-      />
-      <StatCard
-        title="Completed"
-        value={`${stats.completed} (${((stats.completed / stats.total) * 100).toFixed(1)}%)`}
-        icon={<BiCheckCircle />}
-        color="from-green-400 to-green-600"
-      />
-      <StatCard
-        title="Failed"
-        value={stats.failed}
-        icon={<BiError />}
-        color="from-red-400 to-red-600"
-      />
-      <StatCard
-        title="Total Threads"
-        value={stats.totalThreads}
-        icon={<BiChip />}
-        color="from-purple-400 to-purple-600"
-      />
+      <StatCard title="Total Jobs" value={stats.total} icon={<BiTask />} />
+      <StatCard title="Running" value={stats.pending} icon={<BiTime />} />
+      <StatCard title="Completed" value={`${stats.completed} (${((stats.completed / stats.total) * 100).toFixed(1)}%)`} icon={<BiCheckCircle />} />
+      <StatCard title="Failed" value={stats.failed} icon={<BiError />} />
+      <StatCard title="Total Threads" value={stats.totalThreads} icon={<BiChip />} />
       {stats.averageCompletion && (
-        <StatCard
-          title="Avg. Completion Time"
-          value={`${(stats.averageCompletion / 1000).toFixed(2)}s`}
-          icon={<BiTime />}
-          color="from-teal-400 to-teal-600"
-        />
+        <StatCard title="Avg. Completion Time" value={`${(stats.averageCompletion / 1000).toFixed(2)}s`} icon={<BiTime />} />
       )}
     </div>
   );

@@ -2,7 +2,6 @@ package job
 
 import (
 	"fmt"
-	"sync"
 	"time"
 )
 
@@ -14,15 +13,21 @@ func reverse(s string) string {
 	return string(runes)
 }
 
-var resultMutex sync.Mutex
-
 func (j *Job) addPartialSum(partial int) {
-	resultMutex.Lock()
-	defer resultMutex.Unlock()
+	j.resultMu.Lock()
+	defer j.resultMu.Unlock()
 
 	var res LargeArraySumResult
 	if j.Result != nil {
-		res = j.Result.(LargeArraySumResult)
+		// try value type
+		if r, ok := j.Result.(LargeArraySumResult); ok {
+			res = r
+		} else if rp, ok := j.Result.(*LargeArraySumResult); ok {
+			res = *rp
+		} else {
+			// incompatible type — reset to zeroed result
+			res = LargeArraySumResult{}
+		}
 	}
 	res.Sum += partial
 	j.Result = res
