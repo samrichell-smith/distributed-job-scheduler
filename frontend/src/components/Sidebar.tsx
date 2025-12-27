@@ -1,5 +1,5 @@
 import { Link, useLocation } from "react-router-dom";
-import { FaTasks, FaListUl, FaChartBar, FaCog } from "react-icons/fa";
+import { FaTasks, FaListUl, FaChartBar } from "react-icons/fa";
 
 export default function Sidebar() {
   const location = useLocation();
@@ -35,20 +35,7 @@ export default function Sidebar() {
             </Link>
           </li>
         </ul>
-        <div className="mt-8 text-xs uppercase tracking-widest text-gray-400 font-semibold pl-2">
-          Settings
-        </div>
-        <ul className="space-y-2 mt-2">
-          <li>
-            <a
-              href="#"
-              className="flex items-center gap-3 px-3 py-2 rounded-none font-medium transition-colors hover:bg-gray-800/40 hover:text-gray-100 focus:bg-gray-800/60 focus:outline-none text-gray-300"
-            >
-              <FaCog className="text-gray-400" />
-              Preferences
-            </a>
-          </li>
-        </ul>
+        
       </nav>
       {/* Footer */}
       <div className="px-6 py-4 text-xs text-gray-400 border-t border-gray-800 bg-gray-900/90 z-10 relative select-none">
