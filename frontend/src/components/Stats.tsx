@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { type JobStats, fetchJobs } from '../services/api';
 import StatCard from './StatCard';
 import { BiTask, BiCheckCircle, BiError, BiTime, BiChip } from 'react-icons/bi';
+import { useUi } from '../contexts/UiContext';
 
 export default function Stats() {
   const [stats, setStats] = useState<JobStats & { 
@@ -71,9 +72,11 @@ export default function Stats() {
     return () => clearInterval(interval);
   }, []);
 
+  const { screenshotMode } = useUi();
+
   if (isLoading) {
     return (
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 p-4">
+      <div className={screenshotMode ? 'grid grid-cols-4 gap-8 p-8' : 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 p-4'}>
         {[...Array(4)].map((_, i) => (
           <div key={i} className="animate-pulse">
             <div className="bg-gray-200 h-[110px]" />
@@ -84,14 +87,14 @@ export default function Stats() {
   }
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 p-4">
-      <StatCard title="Total Jobs" value={stats.total} icon={<BiTask />} />
-      <StatCard title="Running" value={stats.pending} icon={<BiTime />} />
-      <StatCard title="Completed" value={`${stats.completed} (${((stats.completed / stats.total) * 100).toFixed(1)}%)`} icon={<BiCheckCircle />} />
-      <StatCard title="Failed" value={stats.failed} icon={<BiError />} />
-      <StatCard title="Total Threads" value={stats.totalThreads} icon={<BiChip />} />
+    <div className={screenshotMode ? 'grid grid-cols-4 gap-8 p-8' : 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 p-4'}>
+      <StatCard title="Total Jobs" value={stats.total} icon={<BiTask />} large={screenshotMode} />
+      <StatCard title="Running" value={stats.pending} icon={<BiTime />} large={screenshotMode} />
+      <StatCard title="Completed" value={`${stats.completed} (${((stats.completed / Math.max(1, stats.total)) * 100).toFixed(1)}%)`} icon={<BiCheckCircle />} large={screenshotMode} />
+      <StatCard title="Failed" value={stats.failed} icon={<BiError />} large={screenshotMode} />
+      <StatCard title="Total Threads" value={stats.totalThreads} icon={<BiChip />} large={screenshotMode} />
       {stats.averageCompletion && (
-        <StatCard title="Avg. Completion Time" value={`${(stats.averageCompletion / 1000).toFixed(2)}s`} icon={<BiTime />} />
+        <StatCard title="Avg. Completion Time" value={`${(stats.averageCompletion / 1000).toFixed(2)}s`} icon={<BiTime />} large={screenshotMode} />
       )}
     </div>
   );
