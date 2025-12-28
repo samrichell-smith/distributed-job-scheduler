@@ -1,3 +1,129 @@
+```markdown
+# Distributed Job Scheduler — Project Information (CURRENT)
+
+This file summarizes the repository state as of now: what's implemented, what changed recently, how to run tests, CI status, and the remaining work to make the project portfolio-ready.
+
+---
+
+## High-level summary
+
+- Backend: Go-based scheduler, workers, Redis cache, Postgres persistence, Gin HTTP API.
+- Frontend: React + Vite UI with job submission, job list, metrics, and job details.
+- Recent fixes: safer job payload handling, per-job result locking, chunk partitioning fixes, registered missing job factories, added integration smoke tests, and added CI.
+
+Key user-facing capabilities implemented:
+- Submit jobs via `POST /jobs` (supports `add_numbers`, `reverse_string`, `resize_image`, `large_array_sum`).
+- Query active jobs (`GET /jobs`) and historical jobs (`GET /db/jobs`).
+- Frontend features: search, filter, sort, pagination, CSV export, compact mode, virtualization for large lists.
+
+---
+
+## Repo layout (short)
+
+- `cmd/` — API entry (`api.go`), build-tagged smoke tests (`api_smoke_test.go`).
+- `internal/job/` — job models, payload/result types, execution logic.
+- `internal/scheduler/` — priority queue + scheduler.
+- `internal/worker/` — worker runtime and thread pool.
+- `db/` — SQL schema.
+- `frontend/` — React app, components, and services.
+- `.github/workflows/ci.yml` — CI pipeline (Go unit tests + frontend build/tests).
+
+---
+
+## Recent engineering changes (what's done)
+
+- Backend
+  - Registered all job factories: `add_numbers`, `large_array_sum`, `reverse_string`, `resize_image` (so UI submissions are accepted).
+  - Hardened `Execute()` to use safe type assertions (jobs fail gracefully on bad payloads instead of panicking).
+  - Fixed `ExecuteChunk()` partitioning to handle `thread_count > array length` and avoid zero-length chunks.
+  - Switched aggregation locking to a per-job mutex (`resultMu`) to avoid a global contention point.
+  - Removed the `dockertest` dev dependency from production `go.mod` to make Docker builds stable.
+
+- Frontend
+  - Reworked `JobList` with: debounced search, status filter, sorting, pagination, compact view, expandable details, CSV export, and virtualization using `react-window` for large lists.
+  - Restyled components to a formal neutral palette; replaced sidebar with top tabs; simplified header and removed the version badge.
+  - Added `react-window` to `frontend/package.json`.
+
+- Tests & CI
+  - Unit tests for `internal/job`, `internal/scheduler`, and `internal/worker` are present and run locally.
+  - Added build-tagged API smoke tests: `cmd/api_smoke_test.go` (tag `integration`) that POSTs each job type and polls until completion.
+  - Added GitHub Actions workflow `.github/workflows/ci.yml` to run Go unit tests and build + test the frontend; integration tests are optionally triggerable.
+
+---
+
+## How to run tests locally
+
+- Run Go unit tests:
+```bash
+go test ./... -v
+```
+
+- Run frontend tests (Vitest) and build:
+```bash
+cd frontend
+npm ci
+npm test
+npm run build
+```
+
+- Run integration API smoke tests (API must be running and reachable):
+```bash
+# default assumes http://localhost:8080
+go test -tags=integration ./cmd -v
+# or override the base URL:
+API_URL=http://your-api:8080 go test -tags=integration ./cmd -v
+```
+
+Notes: the smoke tests require an up API (e.g., via `docker compose up api postgres redis`) or a reachable deployment.
+
+---
+
+## Remaining high-ROI work to make this portfolio-ready
+
+1. Polished `README.md` (TL;DR, one-line demo, screenshots/GIF, architecture notes, run/deploy instructions).
+2. Demo data seeder or a dev-only endpoint and a script to populate attractive sample jobs for screenshots.
+3. Screenshot export and/or a screenshot-mode (html2canvas or server-side capture) for clean portfolio images.
+4. Per-row actions (Cancel / Retry) with UI feedback (toasts) to showcase interactivity.
+5. Deploy a live demo (Cloud Run, Vercel, or similar) — highest impact for recruiters.
+6. CI: extend to optionally run integration smoke tests against ephemeral infra or a test endpoint.
+
+Lower priority:
+- Add Prometheus metrics / small dashboard screenshots.
+- Add tracing and structured logs.
+- Harden API (auth, rate limit, validation) before public demo.
+
+---
+
+## Current known caveats (short)
+
+- `ResizeImage` is a simulated helper; not a production image pipeline.
+- `Payload`/`Result` use `interface{}` and generic JSON marshaling; consider explicit typed (de)serialization for robustness.
+- `UiContext` exists from a screenshot-mode iteration; it can be removed if unused.
+
+---
+
+## Next suggested actions I can implement now
+
+- Create a polished `README.md` with screenshots and demo steps (I can generate this and include run/deploy commands).
+- Add a small `scripts/seed_demo.sh` to populate demo jobs and make screenshots look good.
+- Implement screenshot export and a one-click `download PNG` button.
+- Extend CI to publish a preview deployment on push (optional).
+
+If you'd like, I'll start by creating the polished `README.md` and a `scripts/seed_demo.sh` to populate an attractive demo dataset — reply `yes` to proceed.
+
+---
+
+Appendix — quick file references
+
+- API: `cmd/api.go`
+- API smoke tests: `cmd/api_smoke_test.go` (build tag: integration)
+- Job model: `internal/job/job.go`
+- Job utils: `internal/job/utils.go`
+- Scheduler: `internal/scheduler/scheduler.go`
+- Worker: `internal/worker/worker.go`
+- Frontend main pieces: `frontend/src/components/JobList.tsx`, `frontend/src/services/api.ts`, `frontend/package.json`
+
+```
 # Distributed Job Scheduler — Project Information
 
 This document provides a complete, machine-readable overview of the repository so another LLM (or developer) can obtain a perfect understanding of the system: what exists, how it works, assumptions made, known issues, and recommended next steps.
