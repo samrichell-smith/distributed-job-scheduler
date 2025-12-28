@@ -203,7 +203,7 @@ const JobList = () => {
               itemSize={compact ? 36 : 56}
               width="100%"
             >
-              {({ index, style }) => {
+              {({ index, style }: { index: number; style: React.CSSProperties }) => {
                 const job = sorted[index];
                 return (
                   <div key={job.id} style={style} className="grid grid-cols-9 items-center border-b border-gray-100 px-3">

@@ -58,10 +58,12 @@ jobs:
         with:
           node-version: '20'
 
-      - name: Install frontend dependencies
+      - name: Install frontend dependencies (including dev deps)
         working-directory: ./frontend
+        env:
+          NPM_CONFIG_PRODUCTION: 'false'
         run: |
-          npm ci --no-audit --no-fund || npm install --no-audit --no-fund
+          npm install --no-audit --no-fund
 
       - name: Build frontend
         working-directory: ./frontend
