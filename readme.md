@@ -2,15 +2,9 @@
 
 A distributed job scheduling system built in Go, featuring priority-based scheduling, worker thread pools, and multi-threaded job execution. Includes a React frontend for job management and real-time monitoring.
 
-**[Live Demo →](https://your-demo-url.com)** *(coming soon)*
+I built this because I was really interested in learning about distributed systems, job scheduling, worker pools, and concurrent execution. I find the best way to learn something is to try and build it myself, so I did!
 
-![Job Scheduler UI](docs/screenshot.png)
-
----
-
-## Why This Project
-
-Modern backend systems need to efficiently distribute work across compute resources while handling varying priorities and resource constraints. This project implements the core primitives: a priority queue scheduler, thread-aware worker pools, and chunked parallel execution—patterns used in production systems at scale.
+![Job Scheduler UI](img/dashboardScreenshot.png)
 
 ---
 
@@ -23,25 +17,25 @@ Modern backend systems need to efficiently distribute work across compute resour
                               │
                               ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│                      Priority Queue Scheduler                    │
-│            Heap-based queue ordered by priority + timestamp      │
-│                 Thread-aware job-to-worker assignment            │
-└──────────┬─────────────────────────────────────────┬────────────┘
-           │                                     │
-           ▼                                     ▼
+│                      Priority Queue Scheduler                   │
+│            Heap-based queue ordered by priority + timestamp     │
+│                 Thread-aware job-to-worker assignment           │
+└──────────┬──────────────────────────────────────┬───────────────┘
+           │                                      │
+           ▼                                      ▼
+┌────────────────────────┐             ┌────────────────────────┐
+│       Worker 1         │             │       Worker 2         │
+│   Thread Pool (n=4)    │             │   Thread Pool (n=8)    │
+│   ┌───┬───┬───┬───┐    │             │   ┌───┬───┬───┬───┐    │
+│   │ T │ T │ T │ T │    │             │   │ T │ T │...│ T │    │
+│   └───┴───┴───┴───┘    │             │   └───┴───┴───┴───┘    │
+└────────────────────────┘             └────────────────────────┘
+           │                                      │
+           └──────────────────┬───────────────────┘
+                              ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│      Worker 1       │               │      Worker 2       │
-│  Thread Pool (n=4)  │               │  Thread Pool (n=8)  │
-│  ┌───┬───┬───┬───┐  │               │  ┌───┬───┬───┬───┐  │
-│  │ T │ T │ T │ T │  │               │  │ T │ T │...│ T │  │
-│  └───┴───┴───┴───┘  │               │  └───┴───┴───┴───┘  │
-└─────────────────────┘               └─────────────────────┘
-           │                                     │
-           └──────────────┬──────────────────────┘
-                          ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                        Persistence Layer                         │
-│              Redis (job cache)  ·  PostgreSQL (history)          │
+│                        Persistence Layer                        │
+│              Redis (job cache)  ·  PostgreSQL (history)         │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
@@ -50,10 +44,10 @@ Modern backend systems need to efficiently distribute work across compute resour
 ## Key Technical Decisions
 
 ### Priority Queue with Thread Awareness
-The scheduler uses a heap-based priority queue that considers both job priority and worker thread availability. Jobs specify a `thread_demand`, and the scheduler assigns jobs to workers that can satisfy the requirement—or falls back to single-threaded execution when no worker has capacity.
+The scheduler uses a heap-based priority queue that considers both job priority and worker thread availability. Jobs specify a `thread_demand`, and the scheduler assigns jobs to workers that can satisfy the requirement—or falls back to single-threaded execution when no worker has the multi-threaded capacity.
 
 ### Per-Worker Thread Pools
-Each worker maintains a thread pool implemented as a buffered channel (counting semaphore). This bounds concurrency per worker and enables efficient resource utilization without oversubscription.
+Each worker maintains a thread pool implemented as a buffered channel. This bounds concurrency per worker and enables efficient resource utilization without oversubscription.
 
 ### Chunked Parallel Execution
 Jobs like `large_array_sum` support multi-threaded execution by partitioning work into chunks. Each chunk executes on a separate goroutine, with results aggregated using a per-job mutex to avoid global contention.
@@ -63,7 +57,9 @@ Active jobs are cached in Redis for fast lookups. Completed jobs are persisted t
 
 ---
 
-## Supported Job Types
+## Basic Supported Job Types
+
+The jobs themselves were not the focus of this project, so I just added some basic ones to test different features of the scheduler like concurrency.
 
 | Type | Description | Parallelizable |
 |------|-------------|----------------|
@@ -77,7 +73,7 @@ Active jobs are cached in Redis for fast lookups. Completed jobs are persisted t
 ## Quick Start
 ```bash
 # Clone and start all services
-git clone https://github.com/yourusername/distributed-job-scheduler.git
+git clone https://github.com/samrichellsmith/distributed-job-scheduler.git
 cd distributed-job-scheduler
 docker compose up
 
@@ -165,16 +161,6 @@ Environment variables (via `.env` or Docker Compose):
 **Backend:** Go, Gin, pgxpool, go-redis  
 **Frontend:** React, TypeScript, Vite, react-window  
 **Infrastructure:** PostgreSQL, Redis, Docker
-
----
-
-## Future Improvements
-
-- [ ] Prometheus metrics and Grafana dashboard
-- [ ] Job cancellation and retry mechanisms
-- [ ] Worker heartbeat and dynamic registration
-- [ ] Graceful shutdown with job draining
-- [ ] Authentication and rate limiting
 
 ---
 
